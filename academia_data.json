@@ -11,11 +11,6 @@
       "description": ""
     },
     {
-      "id": "mokmlsidla2jv",
-      "name": "1TIC",
-      "description": ""
-    },
-    {
       "id": "mokmlwnqms9hx",
       "name": "2TIC",
       "description": ""
@@ -35,7 +30,7 @@
       "id": "mokmmc7a1gt8s",
       "name": "Elsa CQ",
       "phone": "666534890",
-      "course": "1TIC",
+      "course": "",
       "createdAt": "2026-04-29",
       "balance": 25,
       "receipts": [
@@ -95,5 +90,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 1,
-  "lastModified": "2026-04-29T22:42:40.114Z"
+  "lastModified": "2026-04-29T22:51:11.350Z"
 }
