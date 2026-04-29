@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Academia MVP</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <h1 class="app-title">Academia MVP</h1>
+    <div class="header-actions">
+      <button id="btn-export" class="btn btn-icon" title="Descargar base de datos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button id="btn-import-trigger" class="btn btn-icon" title="Importar base de datos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 5 17 10"/><line x1="12" y1="5" x2="12" y2="17"/></svg>
+      </button>
+      <input type="file" id="btn-import" accept=".json" style="display:none" />
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="app-main">
+
+    <!-- DASHBOARD tab -->
+    <section id="tab-dashboard" class="tab-content active">
+      <div class="section-header">
+        <h2>Resumen</h2>
+      </div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="section-header mt-16">
+        <h2>Próximas clases</h2>
+      </div>
+      <div id="upcoming-classes"></div>
+      <div class="section-header mt-16">
+        <h2>Alumnos con deuda</h2>
+      </div>
+      <div id="debtor-students"></div>
+    </section>
+
+    <!-- STUDENTS tab -->
+    <section id="tab-students" class="tab-content">
+      <div class="section-header">
+        <h2>Alumnos</h2>
+        <button id="btn-new-student" class="btn btn-primary btn-sm">+ Nuevo</button>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="student-search" placeholder="Buscar alumno..." />
+        <select id="student-filter-course">
+          <option value="">Todos los cursos</option>
+        </select>
+      </div>
+      <div id="students-list"></div>
+    </section>
+
+    <!-- CLASSES tab -->
+    <section id="tab-classes" class="tab-content">
+      <div class="section-header">
+        <h2>Clases</h2>
+        <button id="btn-new-class" class="btn btn-primary btn-sm">+ Nueva</button>
+      </div>
+      <div class="search-bar">
+        <input type="date" id="class-filter-date" />
+        <select id="class-filter-type">
+          <option value="">Todos los tipos</option>
+          <option value="individual">Individual</option>
+          <option value="grupal">Grupal</option>
+        </select>
+      </div>
+      <div id="classes-list"></div>
+    </section>
+
+    <!-- CALENDAR tab -->
+    <section id="tab-calendar" class="tab-content">
+      <div class="calendar-nav">
+        <button id="cal-prev" class="btn btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h2 id="cal-month-title"></h2>
+        <button id="cal-next" class="btn btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="calendar-grid">
+        <div class="cal-weekday">L</div>
+        <div class="cal-weekday">M</div>
+        <div class="cal-weekday">X</div>
+        <div class="cal-weekday">J</div>
+        <div class="cal-weekday">V</div>
+        <div class="cal-weekday">S</div>
+        <div class="cal-weekday">D</div>
+      </div>
+      <div id="calendar-days" class="calendar-grid calendar-days"></div>
+    </section>
+
+    <!-- COURSES tab -->
+    <section id="tab-courses" class="tab-content">
+      <div class="section-header">
+        <h2>Cursos</h2>
+        <button id="btn-new-course" class="btn btn-primary btn-sm">+ Nuevo</button>
+      </div>
+      <div id="courses-list"></div>
+    </section>
+
+  </main>
+
+  <!-- Bottom navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-tab="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Inicio</span>
+    </button>
+    <button class="nav-btn" data-tab="students">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Alumnos</span>
+    </button>
+    <button class="nav-btn" data-tab="classes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      <span>Clases</span>
+    </button>
+    <button class="nav-btn" data-tab="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Calendario</span>
+    </button>
+    <button class="nav-btn" data-tab="courses">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      <span>Cursos</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: Student form -->
+  <div id="modal-student" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-student-title">Nuevo alumno</h3>
+        <button class="modal-close" data-modal="modal-student">&times;</button>
+      </div>
+      <form id="form-student" novalidate>
+        <input type="hidden" id="student-id" />
+        <div class="form-group">
+          <label for="student-name">Nombre *</label>
+          <input type="text" id="student-name" required placeholder="Nombre completo" />
+        </div>
+        <div class="form-group">
+          <label for="student-phone">Teléfono</label>
+          <input type="tel" id="student-phone" placeholder="6XX XXX XXX" />
+        </div>
+        <div class="form-group">
+          <label for="student-course">Curso</label>
+          <select id="student-course">
+            <option value="">– Sin curso –</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="student-balance">Saldo pendiente (€)</label>
+          <input type="number" id="student-balance" value="0" step="0.01" min="0" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" data-modal="modal-student">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Class form -->
+  <div id="modal-class" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-class-title">Nueva clase</h3>
+        <button class="modal-close" data-modal="modal-class">&times;</button>
+      </div>
+      <form id="form-class" novalidate>
+        <input type="hidden" id="class-id" />
+        <div class="form-group">
+          <label for="class-type">Tipo *</label>
+          <select id="class-type" required>
+            <option value="individual">Individual</option>
+            <option value="grupal">Grupal</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="class-course">Curso</label>
+          <select id="class-course">
+            <option value="">– Sin curso –</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="class-date">Fecha *</label>
+          <input type="date" id="class-date" required />
+        </div>
+        <div class="form-group">
+          <label for="class-time">Hora *</label>
+          <input type="time" id="class-time" required />
+        </div>
+        <div class="form-group">
+          <label for="class-fee">Cuota por alumno (€) *</label>
+          <input type="number" id="class-fee" required step="0.01" min="0" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Alumnos *</label>
+          <div id="class-students-picker" class="students-picker"></div>
+          <p id="class-students-hint" class="form-hint">Selecciona un alumno</p>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" data-modal="modal-class">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar clase</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Class detail -->
+  <div id="modal-class-detail" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Detalle de clase</h3>
+        <button class="modal-close" data-modal="modal-class-detail">&times;</button>
+      </div>
+      <div id="class-detail-content"></div>
+      <div class="form-actions mt-8">
+        <button id="btn-detail-edit" class="btn btn-secondary">Editar</button>
+        <button id="btn-detail-delete" class="btn btn-danger">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Confirm -->
+  <div id="modal-confirm" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box modal-box--sm">
+      <div class="modal-header">
+        <h3 id="confirm-title">¿Confirmar?</h3>
+      </div>
+      <p id="confirm-message"></p>
+      <div class="form-actions">
+        <button id="confirm-cancel" class="btn btn-secondary">Cancelar</button>
+        <button id="confirm-ok" class="btn btn-danger">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Course form -->
+  <div id="modal-course" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-course-title">Nuevo curso</h3>
+        <button class="modal-close" data-modal="modal-course">&times;</button>
+      </div>
+      <form id="form-course" novalidate>
+        <input type="hidden" id="course-id" />
+        <div class="form-group">
+          <label for="course-name">Nombre del curso *</label>
+          <input type="text" id="course-name" required placeholder="Ej: 3º ESO, 1º Bachillerato..." />
+        </div>
+        <div class="form-group">
+          <label for="course-description">Descripción</label>
+          <input type="text" id="course-description" placeholder="Opcional" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" data-modal="modal-course">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
