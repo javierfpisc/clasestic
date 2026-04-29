@@ -9,11 +9,6 @@
       "id": "mokall42oz0r0",
       "name": "2TIC",
       "description": ""
-    },
-    {
-      "id": "mokmlwnqms9hx",
-      "name": "2TIC",
-      "description": ""
     }
   ],
   "students": [
@@ -21,7 +16,7 @@
       "id": "mokmliibmj8b5",
       "name": "Javier FP",
       "phone": "667864543",
-      "course": "2TIC",
+      "course": "",
       "createdAt": "2026-04-29",
       "balance": 25,
       "receipts": []
@@ -48,7 +43,7 @@
       "id": "mokmtiqy26hmp",
       "name": "Leire AC",
       "phone": "6678432545",
-      "course": "2TIC",
+      "course": "",
       "createdAt": "2026-04-29",
       "balance": 35,
       "receipts": []
@@ -71,7 +66,7 @@
     {
       "id": "mokmtzdlcmpuc",
       "type": "individual",
-      "course": "2TIC",
+      "course": "",
       "date": "2026-04-30",
       "time": "20:00",
       "fee": 10,
@@ -90,5 +85,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 1,
-  "lastModified": "2026-04-29T22:51:11.350Z"
+  "lastModified": "2026-04-29T22:51:13.673Z"
 }
