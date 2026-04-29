@@ -16,8 +16,10 @@ const DAYS_ES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Dom
 // ─── STATE ───────────────────────────────────
 let state = {
   courses:  [],   // { id, name, description }
-  students: [],   // { id, name, phone, course, createdAt, balance }
-  classes:  [],   // { id, type, course, date, time, fee, studentIds }
+  students: [],   // { id, name, phone, course, createdAt, balance, receipts[] }
+  classes:  [],   // { id, type, course, date, time, fee, studentIds, gcalEventId? }
+  settings: { academyName: 'Mi Academia', gcalClientId: '', gcalCalendarId: 'primary' },
+  receiptCounter: 0,
 };
 
 let calendarDate = new Date();  // currently viewed month
@@ -84,6 +86,12 @@ function loadState() {
     // corrupt data – start fresh
     state = { courses: [], students: [], classes: [] };
   }
+  // backward-compat: ensure new fields exist
+  if (!state.settings) state.settings = { academyName: 'Mi Academia', gcalClientId: '', gcalCalendarId: 'primary' };
+  if (!state.settings.academyName) state.settings.academyName = 'Mi Academia';
+  if (!state.settings.gcalCalendarId) state.settings.gcalCalendarId = 'primary';
+  if (!state.receiptCounter) state.receiptCounter = 0;
+  state.students.forEach(s => { if (!Array.isArray(s.receipts)) s.receipts = []; });
 }
 
 // ─── EXPORT / IMPORT ─────────────────────────
@@ -281,6 +289,7 @@ function applyStudentFilters() {
 function buildStudentCard(s) {
   const balance = parseFloat(s.balance) || 0;
   const isDebt  = balance > 0;
+  const pendingReceipts = (s.receipts || []).filter(r => r.status === 'pending');
   return `
     <div class="student-card">
       <div class="student-avatar">${initials(s.name)}</div>
@@ -290,12 +299,20 @@ function buildStudentCard(s) {
         <span class="balance-badge ${isDebt ? 'debt' : 'paid'}">
           ${isDebt ? '⚠ ' + fmtCurrency(balance) : '✓ Al corriente'}
         </span>
+        ${pendingReceipts.length > 0 ? `
+          <button class="receipt-pending-badge" onclick="openStudentReceipts('${s.id}')">
+            📄 ${pendingReceipts.length} recibo${pendingReceipts.length !== 1 ? 's' : ''} pendiente${pendingReceipts.length !== 1 ? 's' : ''}
+          </button>` : ''}
       </div>
       <div class="student-actions">
         <button class="btn btn-icon" onclick="openEditStudent('${s.id}')" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        ${isDebt ? `<button class="btn btn-sm btn-success" onclick="markPaid('${s.id}')">Pagado</button>` : ''}
+        ${isDebt ? `<button class="btn btn-sm btn-primary" onclick="generateReceipt('${s.id}')" title="Generar recibo PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Recibo
+        </button>` : ''}
+        ${(s.receipts || []).length > 0 && !isDebt ? `<button class="btn btn-sm btn-secondary" onclick="openStudentReceipts('${s.id}')">Ver recibos</button>` : ''}
         <button class="btn btn-icon" style="color:var(--danger)" onclick="deleteStudent('${s.id}')" title="Eliminar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>
@@ -419,6 +436,9 @@ function buildClassCard(c) {
     const s = state.students.find(s => s.id === id);
     return s ? s.name.split(' ')[0] : '?';
   });
+  const gcalBadge = c.gcalEventId
+    ? `<span class="gcal-synced-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> GCal</span>`
+    : '';
   return `
     <div class="class-card" onclick="openClassDetail('${c.id}')">
       <div class="class-card-header">
@@ -428,7 +448,7 @@ function buildClassCard(c) {
             <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
             <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          ${fmtDate(c.date)} · <span style="font-weight:600">${dayOfWeek(c.date)}</span> · ${c.time}
+          ${fmtDate(c.date)} · <span style="font-weight:600">${dayOfWeek(c.date)}</span> · ${c.time}${gcalBadge}
         </span>
       </div>
       <div class="class-course">${escHtml(c.course || '–')}</div>
@@ -587,17 +607,33 @@ function saveClass(e) {
     }
   } else {
     // New class: add fee to each student balance
+    const newId = uid();
     studentIds.forEach(sid => {
       const s = state.students.find(s => s.id === sid);
       if (s) s.balance = (parseFloat(s.balance) || 0) + fee;
     });
-    state.classes.push({ id: uid(), type, course, date, time, fee, studentIds });
+    state.classes.push({ id: newId, type, course, date, time, fee, studentIds });
   }
 
   saveState();
   closeModal('modal-class');
   renderCurrentTab();
   showToast(id ? 'Clase actualizada' : 'Clase creada', 'success');
+
+  // Auto-sync new/updated class to Google Calendar if connected
+  if (isGCalConnected()) {
+    const savedId = id || state.classes[state.classes.length - 1]?.id;
+    const saved   = state.classes.find(c => c.id === savedId);
+    if (saved) {
+      upsertGCalEvent(saved).then(eventId => {
+        if (eventId) {
+          saved.gcalEventId = eventId;
+          saveState();
+          renderCurrentTab();
+        }
+      });
+    }
+  }
 }
 
 // ─── CLASS DETAIL ────────────────────────────
@@ -629,7 +665,9 @@ function deleteClass(classId) {
   confirmAction(
     'Eliminar clase',
     `¿Eliminar esta clase? Se restarán ${fmtCurrency(c.fee)} del saldo de cada alumno.`,
-    () => {
+    async () => {
+      // Remove from Google Calendar if synced
+      if (c.gcalEventId) await deleteGCalEvent(c);
       // Reverse fees
       c.studentIds.forEach(sid => {
         const s = state.students.find(s => s.id === sid);
@@ -882,9 +920,388 @@ function deleteCourse(courseId) {
   );
 }
 
+// ─── GOOGLE CALENDAR ─────────────────────────
+let gcalTokenClient = null;
+let gcalAccessToken = null;
+let gcalAccessExpiry = 0;
+
+function onGISLoaded() {
+  initGCalTokenClient();
+}
+
+function isGCalConnected() {
+  return !!(gcalAccessToken && Date.now() < gcalAccessExpiry);
+}
+
+function initGCalTokenClient() {
+  const clientId = state.settings?.gcalClientId?.trim();
+  if (!clientId || !window.google?.accounts?.oauth2) return;
+  gcalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/calendar.events',
+    callback: handleGCalToken,
+  });
+  updateGCalUI();
+}
+
+function handleGCalToken(response) {
+  if (response.error) {
+    showToast('Error Google: ' + (response.error_description || response.error), 'error');
+    return;
+  }
+  gcalAccessToken  = response.access_token;
+  gcalAccessExpiry = Date.now() + ((parseInt(response.expires_in, 10) || 3600) - 60) * 1000;
+  updateGCalUI();
+  showToast('Google Calendar conectado ✓', 'success');
+}
+
+function connectGCal() {
+  const clientId = state.settings?.gcalClientId?.trim();
+  if (!clientId) {
+    showToast('Introduce primero el Client ID en Ajustes', 'error');
+    return;
+  }
+  if (!window.google?.accounts?.oauth2) {
+    showToast('El SDK de Google aún no está cargado, espera un momento', 'error');
+    return;
+  }
+  if (!gcalTokenClient) initGCalTokenClient();
+  gcalTokenClient.requestAccessToken({ prompt: '' });
+}
+
+function disconnectGCal() {
+  if (gcalAccessToken && window.google?.accounts?.oauth2) {
+    google.accounts.oauth2.revoke(gcalAccessToken, () => {});
+  }
+  gcalAccessToken  = null;
+  gcalAccessExpiry = 0;
+  gcalTokenClient  = null;
+  updateGCalUI();
+  showToast('Desconectado de Google Calendar');
+}
+
+function updateGCalUI() {
+  const connected = isGCalConnected();
+  const headerDot = document.getElementById('gcal-dot');
+  if (headerDot) headerDot.className = 'gcal-dot ' + (connected ? 'connected' : 'disconnected');
+
+  const syncBtn = document.getElementById('btn-gcal-sync');
+  if (syncBtn) syncBtn.classList.toggle('hidden', !connected);
+
+  const settingsDot    = document.getElementById('settings-gcal-dot');
+  const settingsLabel  = document.getElementById('settings-gcal-label');
+  const connectBtn     = document.getElementById('btn-gcal-connect');
+  const disconnectBtn  = document.getElementById('btn-gcal-disconnect');
+  if (settingsDot)   settingsDot.className    = 'gcal-dot ' + (connected ? 'connected' : 'disconnected');
+  if (settingsLabel) settingsLabel.textContent = connected ? 'Conectado' : 'Desconectado';
+  if (connectBtn)    connectBtn.classList.toggle('hidden', connected);
+  if (disconnectBtn) disconnectBtn.classList.toggle('hidden', !connected);
+}
+
+async function syncAllToGCal() {
+  if (!isGCalConnected()) { showToast('Conecta primero Google Calendar', 'error'); return; }
+  const today  = todayStr();
+  const toSync = state.classes.filter(c => c.date >= today);
+  if (toSync.length === 0) { showToast('No hay clases futuras para sincronizar'); return; }
+
+  showToast(`Sincronizando ${toSync.length} clase${toSync.length !== 1 ? 's' : ''}…`);
+  let synced = 0;
+  for (const cls of toSync) {
+    const eventId = await upsertGCalEvent(cls);
+    if (eventId) { cls.gcalEventId = eventId; synced++; }
+    if (!isGCalConnected()) break;
+  }
+  if (synced > 0) {
+    saveState();
+    renderCalendar();
+    showToast(`${synced} clase${synced !== 1 ? 's' : ''} sincronizada${synced !== 1 ? 's' : ''} ✓`, 'success');
+  }
+}
+
+async function upsertGCalEvent(cls) {
+  const calendarId = encodeURIComponent(state.settings?.gcalCalendarId || 'primary');
+  const timeZone   = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const startDt    = new Date(`${cls.date}T${cls.time}:00`);
+  const endDt      = new Date(startDt.getTime() + 60 * 60 * 1000);
+
+  const studentNames = cls.studentIds.map(id => {
+    const s = state.students.find(s => s.id === id);
+    return s ? s.name : '?';
+  }).join(', ');
+
+  const event = {
+    summary:     `Clase ${cls.type === 'individual' ? 'individual' : 'grupal'}${cls.course ? ' · ' + cls.course : ''}`,
+    description: `Alumnos: ${studentNames}\nCuota: ${fmtCurrency(cls.fee)}/alumno`,
+    start: { dateTime: startDt.toISOString(), timeZone },
+    end:   { dateTime: endDt.toISOString(),   timeZone },
+    colorId: cls.type === 'individual' ? '1' : '5',
+  };
+
+  try {
+    let url, method;
+    if (cls.gcalEventId) {
+      url    = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(cls.gcalEventId)}`;
+      method = 'PUT';
+    } else {
+      url    = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`;
+      method = 'POST';
+    }
+    const res = await fetch(url, {
+      method,
+      headers: { 'Authorization': `Bearer ${gcalAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    });
+    if (res.status === 401) {
+      gcalAccessToken = null; gcalAccessExpiry = 0;
+      updateGCalUI();
+      showToast('Sesión de Google expirada, reconecta', 'error');
+      return null;
+    }
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.id;
+  } catch {
+    return null;
+  }
+}
+
+async function deleteGCalEvent(cls) {
+  if (!cls.gcalEventId || !isGCalConnected()) return;
+  const calendarId = encodeURIComponent(state.settings?.gcalCalendarId || 'primary');
+  try {
+    await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(cls.gcalEventId)}`,
+      { method: 'DELETE', headers: { 'Authorization': `Bearer ${gcalAccessToken}` } }
+    );
+  } catch { /* ignore */ }
+}
+
+// ─── SETTINGS MODAL ──────────────────────────
+function openSettingsModal() {
+  document.getElementById('settings-academy-name').value      = state.settings?.academyName    || '';
+  document.getElementById('settings-gcal-client-id').value    = state.settings?.gcalClientId   || '';
+  document.getElementById('settings-gcal-calendar-id').value  = state.settings?.gcalCalendarId || 'primary';
+  updateGCalUI();
+  openModal('modal-settings');
+}
+
+function saveSettings() {
+  const academyName    = document.getElementById('settings-academy-name').value.trim();
+  const gcalClientId   = document.getElementById('settings-gcal-client-id').value.trim();
+  const gcalCalendarId = document.getElementById('settings-gcal-calendar-id').value.trim() || 'primary';
+  state.settings = { academyName: academyName || 'Mi Academia', gcalClientId, gcalCalendarId };
+  saveState();
+  closeModal('modal-settings');
+  showToast('Ajustes guardados', 'success');
+  gcalTokenClient = null;
+  initGCalTokenClient();
+}
+
+// ─── RECEIPTS ────────────────────────────────
+function generateReceipt(studentId) {
+  const s = state.students.find(s => s.id === studentId);
+  if (!s) return;
+  const balance = parseFloat(s.balance) || 0;
+  if (balance <= 0) { showToast('Este alumno no tiene saldo pendiente', 'error'); return; }
+
+  const hasPending = (s.receipts || []).some(r => r.status === 'pending');
+  if (hasPending) {
+    confirmAction(
+      'Ya existe un recibo pendiente',
+      `${s.name} ya tiene un recibo sin descargar. ¿Generar uno nuevo de todas formas?`,
+      () => doGenerateReceipt(s)
+    );
+  } else {
+    doGenerateReceipt(s);
+  }
+}
+
+function doGenerateReceipt(s) {
+  state.receiptCounter = (state.receiptCounter || 0) + 1;
+  const now   = new Date();
+  const year  = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const seq   = String(state.receiptCounter).padStart(3, '0');
+
+  const receipt = {
+    id:          uid(),
+    number:      `${year}${month}-${seq}`,
+    generatedAt: todayStr(),
+    amount:      parseFloat(s.balance) || 0,
+    status:      'pending',
+    printedAt:   null,
+  };
+  if (!s.receipts) s.receipts = [];
+  s.receipts.push(receipt);
+  saveState();
+  renderCurrentTab();
+  showToast(`Recibo ${receipt.number} generado`, 'success');
+  openStudentReceipts(s.id);
+}
+
+function openStudentReceipts(studentId) {
+  const s = state.students.find(s => s.id === studentId);
+  if (!s) return;
+  renderReceiptsModal(s);
+  openModal('modal-receipts');
+}
+
+function renderReceiptsModal(s) {
+  document.getElementById('receipts-student-name').textContent = s.name;
+  const receipts  = (s.receipts || []).slice().reverse();
+  const container = document.getElementById('receipts-list');
+
+  if (receipts.length === 0) {
+    container.innerHTML = `<p class="empty-state" style="padding:20px 0;text-align:center">No hay recibos generados</p>`;
+    return;
+  }
+
+  container.innerHTML = receipts.map(r => `
+    <div class="receipt-item ${r.status}">
+      <div class="receipt-item-header">
+        <span class="receipt-number">Nº ${escHtml(r.number)}</span>
+        <span class="receipt-status-badge ${r.status}">${r.status === 'pending' ? 'Pendiente' : 'Cobrado'}</span>
+      </div>
+      <div class="receipt-item-body">
+        <div>
+          <div class="receipt-date">Generado: ${fmtDate(r.generatedAt)}</div>
+          ${r.printedAt ? `<div class="receipt-date" style="color:var(--success)">Cobrado: ${fmtDate(r.printedAt)}</div>` : ''}
+        </div>
+        <div class="receipt-amount">${fmtCurrency(r.amount)}</div>
+      </div>
+      ${r.status === 'pending' ? `
+        <div class="receipt-item-actions">
+          <button class="btn btn-sm btn-secondary" onclick="cancelReceipt('${s.id}','${r.id}')">Cancelar</button>
+          <button class="btn btn-sm btn-primary" onclick="downloadReceiptPdf('${s.id}','${r.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Descargar PDF y marcar pagado
+          </button>
+        </div>` : ''}
+    </div>`).join('');
+}
+
+function cancelReceipt(studentId, receiptId) {
+  const s = state.students.find(s => s.id === studentId);
+  if (!s) return;
+  const r = (s.receipts || []).find(r => r.id === receiptId);
+  if (!r || r.status !== 'pending') return;
+  confirmAction('Cancelar recibo', `¿Cancelar el recibo ${r.number}?`, () => {
+    s.receipts = s.receipts.filter(r => r.id !== receiptId);
+    saveState();
+    renderReceiptsModal(s);
+    renderCurrentTab();
+    showToast(`Recibo ${r.number} cancelado`);
+  });
+}
+
+function downloadReceiptPdf(studentId, receiptId) {
+  const s = state.students.find(s => s.id === studentId);
+  if (!s) return;
+  const r = (s.receipts || []).find(r => r.id === receiptId);
+  if (!r) return;
+
+  if (!window.jspdf?.jsPDF) { showToast('La librería PDF no está disponible', 'error'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc      = new jsPDF({ unit: 'mm', format: 'a5' });
+  const pageW    = doc.internal.pageSize.getWidth();
+  const pageH    = doc.internal.pageSize.getHeight();
+  const margin   = 14;
+  const contentW = pageW - margin * 2;
+  const academyName = state.settings?.academyName || 'Academia';
+
+  // Header band
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 0, pageW, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text(academyName, margin, 12);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('RECIBO DE PAGO', margin, 20);
+  doc.setFontSize(9);
+  doc.text(`N\xba ${r.number}`, pageW - margin, 12, { align: 'right' });
+  doc.text(fmtDate(r.generatedAt), pageW - margin, 20, { align: 'right' });
+
+  // Student block
+  let y = 38;
+  doc.setFillColor(243, 244, 246);
+  doc.roundedRect(margin, y, contentW, 26, 2, 2, 'F');
+  doc.setFontSize(7);
+  doc.setTextColor(107, 114, 128);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATOS DEL ALUMNO', margin + 4, y + 6);
+  doc.setFontSize(12);
+  doc.setTextColor(31, 41, 55);
+  doc.setFont('helvetica', 'bold');
+  doc.text(s.name, margin + 4, y + 14);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(107, 114, 128);
+  const meta = [s.course, s.phone].filter(Boolean).join('  \xb7  ');
+  if (meta) doc.text(meta, margin + 4, y + 21);
+
+  // Amount block
+  y += 34;
+  doc.setFillColor(224, 231, 255);
+  doc.roundedRect(margin, y, contentW, 22, 2, 2, 'F');
+  doc.setFontSize(7);
+  doc.setTextColor(107, 114, 128);
+  doc.setFont('helvetica', 'bold');
+  doc.text('IMPORTE', margin + 4, y + 6);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(79, 70, 229);
+  doc.text(fmtCurrency(r.amount), margin + 4, y + 17);
+
+  // Concept
+  y += 30;
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(107, 114, 128);
+  doc.text('CONCEPTO', margin + 4, y);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(31, 41, 55);
+  doc.text('Clases recibidas' + (s.course ? '  \xb7  ' + s.course : ''), margin + 4, y + 7);
+
+  // Divider
+  y += 18;
+  doc.setDrawColor(209, 213, 219);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageW - margin, y);
+
+  // Footer
+  y += 7;
+  doc.setFontSize(7);
+  doc.setTextColor(156, 163, 175);
+  doc.text('Este recibo acredita el pago de las clases indicadas.', margin, y);
+
+  // Signature area
+  const sigY = pageH - 20;
+  doc.setDrawColor(209, 213, 219);
+  doc.setLineWidth(0.3);
+  doc.line(margin, sigY, margin + 48, sigY);
+  doc.setFontSize(7);
+  doc.setTextColor(156, 163, 175);
+  doc.text('Firma / Sello', margin, sigY + 5);
+
+  doc.save(`recibo_${r.number}_${s.name.replace(/\s+/g, '_')}.pdf`);
+
+  // Mark printed and update balance
+  r.status    = 'printed';
+  r.printedAt = todayStr();
+  s.balance   = Math.max(0, (parseFloat(s.balance) || 0) - r.amount);
+
+  saveState();
+  renderReceiptsModal(s);
+  renderCurrentTab();
+  showToast(`Recibo ${r.number} descargado \xb7 saldo actualizado`, 'success');
+}
+
 // ─── EVENT LISTENERS ─────────────────────────
 function initEvents() {
-  // Navigation
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
@@ -981,6 +1398,9 @@ function initEvents() {
 function init() {
   loadState();
   initEvents();
+  // Try to init GCal token client if GIS library already loaded
+  initGCalTokenClient();
+  updateGCalUI();
   renderDashboard();
 }
 

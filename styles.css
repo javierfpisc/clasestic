@@ -687,3 +687,183 @@ input::placeholder { color: var(--gray-400); }
   .modal-box { border-radius: var(--radius); max-height: 85dvh; }
   .stats-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* =============================================
+   Google Calendar
+   ============================================= */
+.gcal-header-btn { position: relative; }
+
+.gcal-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  display: inline-block;
+  border: 1.5px solid var(--white);
+  position: absolute;
+  top: 4px; right: 4px;
+  transition: background var(--transition);
+}
+.gcal-dot.connected    { background: var(--success); }
+.gcal-dot.disconnected { background: var(--gray-300); }
+
+.btn-gcal {
+  background: #1a73e8;
+  color: #fff;
+  gap: 6px;
+}
+.btn-gcal:hover { background: #1557b0; }
+.btn-gcal.hidden { display: none; }
+
+.gcal-connect-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+}
+.gcal-connect-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--gray-600);
+}
+.gcal-connect-status .gcal-dot { position: static; border-color: transparent; }
+
+/* =============================================
+   Settings modal
+   ============================================= */
+.settings-section {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.settings-section-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.settings-hint {
+  font-size: 0.78rem;
+  color: var(--gray-500);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: var(--warning-light);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--warning);
+}
+.settings-hint code {
+  background: rgba(0,0,0,0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+/* =============================================
+   Receipts
+   ============================================= */
+.receipt-item {
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--white);
+}
+.receipt-item.printed {
+  opacity: 0.75;
+  border-style: dashed;
+}
+.receipt-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.receipt-number {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gray-700);
+  font-family: monospace;
+}
+.receipt-status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.receipt-status-badge.pending {
+  background: var(--warning-light);
+  color: #b45309;
+}
+.receipt-status-badge.printed {
+  background: var(--success-light);
+  color: #15803d;
+}
+.receipt-item-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.receipt-date {
+  font-size: 0.78rem;
+  color: var(--gray-500);
+}
+.receipt-amount {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+.receipt-item-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Receipt badge on student card */
+.receipt-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #b45309;
+  background: var(--warning-light);
+  padding: 2px 7px;
+  border-radius: 99px;
+  margin-top: 3px;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+.receipt-pending-badge:hover { background: #fde68a; }
+
+/* GCal synced indicator on class cards */
+.gcal-synced-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #1a73e8;
+  background: #e8f0fe;
+  padding: 2px 6px;
+  border-radius: 99px;
+  margin-left: 4px;
+}
