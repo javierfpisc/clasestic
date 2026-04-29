@@ -23,15 +23,6 @@
   ],
   "students": [
     {
-      "id": "mokal4teoktxd",
-      "name": "Javier Fernández",
-      "phone": "6583624563",
-      "course": "1TIC",
-      "createdAt": "2026-04-29",
-      "balance": 20,
-      "receipts": []
-    },
-    {
       "id": "mokmliibmj8b5",
       "name": "Javier FP",
       "phone": "667864543",
@@ -57,20 +48,18 @@
       "createdAt": "2026-04-29",
       "balance": 10,
       "receipts": []
+    },
+    {
+      "id": "mokal4teoktxd",
+      "name": "Javier Fernández",
+      "phone": "6583624563",
+      "course": "1TIC",
+      "createdAt": "2026-04-29",
+      "balance": 20,
+      "receipts": []
     }
   ],
   "classes": [
-    {
-      "id": "mokam9u538hx1",
-      "type": "individual",
-      "course": "1TIC",
-      "date": "2026-04-29",
-      "time": "21:00",
-      "fee": 20,
-      "studentIds": [
-        "mokal4teoktxd"
-      ]
-    },
     {
       "id": "mokmn26ubglur",
       "type": "grupal",
@@ -93,6 +82,17 @@
       "studentIds": [
         "mokmtiqy26hmp"
       ]
+    },
+    {
+      "id": "mokam9u538hx1",
+      "type": "individual",
+      "course": "1TIC",
+      "date": "2026-04-29",
+      "time": "21:00",
+      "fee": 20,
+      "studentIds": [
+        "mokal4teoktxd"
+      ]
     }
   ],
   "settings": {
@@ -105,5 +105,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 0,
-  "lastModified": "2026-04-29T22:36:11.314Z"
+  "lastModified": "2026-04-29T22:36:44.494Z"
 }
