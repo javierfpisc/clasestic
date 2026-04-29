@@ -13,6 +13,10 @@
   <header class="app-header">
     <h1 class="app-title">Academia MVP</h1>
     <div class="header-actions">
+      <button id="btn-github-sync" class="btn btn-icon github-sync-btn" title="Sincronizar con GitHub" onclick="manualGithubSync()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <span id="github-sync-dot" class="github-sync-dot unconfigured"></span>
+      </button>
       <button id="btn-gcal-status" class="btn btn-icon gcal-header-btn" title="Google Calendar" onclick="openSettingsModal()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span id="gcal-dot" class="gcal-dot"></span>
@@ -328,6 +332,38 @@
             <button id="btn-gcal-connect" class="btn btn-sm btn-gcal" onclick="connectGCal()">Conectar</button>
             <button id="btn-gcal-disconnect" class="btn btn-sm btn-secondary hidden" onclick="disconnectGCal()">Desconectar</button>
           </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h4 class="settings-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:-3px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Sincronización GitHub
+        </h4>
+        <p class="settings-hint">El JSON se guarda automáticamente en tu repositorio de GitHub. Crea un <strong>Personal Access Token</strong> (clásico) con scope <code>repo</code> en <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">github.com/settings/tokens</a>. El token se almacena solo en este dispositivo.</p>
+        <div class="form-group">
+          <label for="settings-gh-token">Personal Access Token</label>
+          <input type="password" id="settings-gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="settings-gh-repo">Repositorio (usuario/nombre)</label>
+          <input type="text" id="settings-gh-repo" placeholder="usuario/mi-academia-datos" autocomplete="off" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <div class="form-group" style="margin-bottom:0">
+            <label for="settings-gh-branch">Rama</label>
+            <input type="text" id="settings-gh-branch" placeholder="main" />
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label for="settings-gh-path">Ruta del archivo</label>
+            <input type="text" id="settings-gh-path" placeholder="academia_data.json" />
+          </div>
+        </div>
+        <div class="gcal-connect-row">
+          <div class="gcal-connect-status">
+            <span id="settings-github-dot" class="gcal-dot disconnected"></span>
+            <span id="settings-github-label">No configurado</span>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="testGithubConnection()">Comprobar conexión</button>
         </div>
       </div>
       <div class="form-actions">

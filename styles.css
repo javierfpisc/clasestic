@@ -867,3 +867,28 @@ input::placeholder { color: var(--gray-400); }
   border-radius: 99px;
   margin-left: 4px;
 }
+
+/* =============================================
+   GitHub Sync
+   ============================================= */
+.github-sync-btn { position: relative; }
+
+.github-sync-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1.5px solid var(--white);
+  position: absolute;
+  top: 4px; right: 4px;
+  transition: background var(--transition);
+}
+.github-sync-dot.unconfigured { background: var(--gray-300); }
+.github-sync-dot.ok           { background: var(--success); }
+.github-sync-dot.pending      { background: var(--warning); }
+.github-sync-dot.error        { background: var(--danger); }
+.github-sync-dot.syncing      { background: var(--warning); animation: githubPulse 1s ease-in-out infinite; }
+
+@keyframes githubPulse {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}

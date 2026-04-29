@@ -18,8 +18,12 @@ let state = {
   courses:  [],   // { id, name, description }
   students: [],   // { id, name, phone, course, createdAt, balance, receipts[] }
   classes:  [],   // { id, type, course, date, time, fee, studentIds, gcalEventId? }
-  settings: { academyName: 'Mi Academia', gcalClientId: '', gcalCalendarId: 'primary' },
+  settings: {
+    academyName: 'Mi Academia', gcalClientId: '', gcalCalendarId: 'primary',
+    githubToken: '', githubRepo: '', githubBranch: 'main', githubFilePath: 'academia_data.json',
+  },
   receiptCounter: 0,
+  lastModified:   null,
 };
 
 let calendarDate = new Date();  // currently viewed month
@@ -63,12 +67,21 @@ function todayStr() {
 }
 
 // ─── PERSISTENCE ─────────────────────────────
-function saveState() {
+// Save only to localStorage (no timestamp update, no GitHub push).
+// Used internally by sync code to avoid re-triggering pushes.
+function saveLocalOnly() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
     showToast('Error guardando datos', 'error');
   }
+}
+
+// Save to localStorage, stamp lastModified, and schedule a GitHub push.
+function saveState() {
+  state.lastModified = new Date().toISOString();
+  saveLocalOnly();
+  scheduleGithubPush();
 }
 
 function loadState() {
@@ -88,9 +101,14 @@ function loadState() {
   }
   // backward-compat: ensure new fields exist
   if (!state.settings) state.settings = { academyName: 'Mi Academia', gcalClientId: '', gcalCalendarId: 'primary' };
-  if (!state.settings.academyName) state.settings.academyName = 'Mi Academia';
+  if (!state.settings.academyName)    state.settings.academyName    = 'Mi Academia';
   if (!state.settings.gcalCalendarId) state.settings.gcalCalendarId = 'primary';
+  if (!state.settings.githubToken)    state.settings.githubToken    = '';
+  if (!state.settings.githubRepo)     state.settings.githubRepo     = '';
+  if (!state.settings.githubBranch)   state.settings.githubBranch   = 'main';
+  if (!state.settings.githubFilePath) state.settings.githubFilePath = 'academia_data.json';
   if (!state.receiptCounter) state.receiptCounter = 0;
+  if (!state.lastModified)   state.lastModified   = null;
   state.students.forEach(s => { if (!Array.isArray(s.receipts)) s.receipts = []; });
 }
 
@@ -1076,12 +1094,277 @@ async function deleteGCalEvent(cls) {
   } catch { /* ignore */ }
 }
 
+// ─── GITHUB SYNC ─────────────────────────────
+let githubFileSha   = null;   // SHA of the current remote file (required for updates)
+let githubSyncTimer = null;   // debounce timer
+let githubSyncing   = false;  // prevent concurrent pushes
+let githubLastSync  = null;   // Date of last successful push
+let githubStatus    = 'unconfigured';
+
+function getGithubConfig() {
+  const s        = state.settings;
+  const token    = s?.githubToken?.trim();
+  const repo     = s?.githubRepo?.trim();
+  const branch   = s?.githubBranch?.trim()   || 'main';
+  const filePath = s?.githubFilePath?.trim() || 'academia_data.json';
+  if (!token || !repo) return null;
+  return { token, repo, branch, filePath };
+}
+
+function githubApiHeaders(token) {
+  return {
+    'Authorization':       `Bearer ${token}`,
+    'Accept':              'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Content-Type':        'application/json',
+  };
+}
+
+// UTF-8 safe base64 encode
+function stateToBase64() {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
+}
+
+// UTF-8 safe base64 decode
+function base64ToObj(b64) {
+  return JSON.parse(decodeURIComponent(escape(atob(b64.replace(/\n/g, '')))));
+}
+
+function setGithubStatus(status) {
+  githubStatus = status;
+  const dot = document.getElementById('github-sync-dot');
+  if (!dot) return;
+  dot.className = `github-sync-dot ${status}`;
+  const labels = {
+    unconfigured: 'GitHub Sync no configurado (Ajustes)',
+    ok:      `Sincronizado${githubLastSync ? ' ' + githubLastSync.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : ''}`,
+    pending: 'Pendiente de sincronizar\u2026',
+    syncing: 'Sincronizando con GitHub\u2026',
+    error:   'Error de sincronizaci\u00f3n con GitHub',
+  };
+  dot.title = labels[status] || status;
+  // Update settings modal indicator if open
+  const settingsDot   = document.getElementById('settings-github-dot');
+  const settingsLabel = document.getElementById('settings-github-label');
+  if (settingsDot)   settingsDot.className    = 'gcal-dot ' + (status === 'ok' ? 'connected' : 'disconnected');
+  if (settingsLabel) settingsLabel.textContent = labels[status] || status;
+}
+
+// Pull remote state from GitHub and reconcile with local
+async function githubPull() {
+  const cfg = getGithubConfig();
+  if (!cfg) return false;
+
+  setGithubStatus('syncing');
+  try {
+    const filePath = cfg.filePath.split('/').map(encodeURIComponent).join('/');
+    const url = `https://api.github.com/repos/${cfg.repo}/contents/${filePath}?ref=${encodeURIComponent(cfg.branch)}`;
+    const res = await fetch(url, { headers: githubApiHeaders(cfg.token) });
+
+    if (res.status === 404) {
+      // File not yet in repo — first run, local state is the source of truth
+      githubFileSha = null;
+      setGithubStatus('ok');
+      return true;
+    }
+    if (res.status === 401 || res.status === 403) {
+      setGithubStatus('error');
+      showToast('GitHub: acceso denegado. Revisa el token.', 'error');
+      return false;
+    }
+    if (!res.ok) {
+      setGithubStatus('error');
+      showToast(`GitHub pull error ${res.status}`, 'error');
+      return false;
+    }
+
+    const data    = await res.json();
+    githubFileSha = data.sha;
+    const remote  = base64ToObj(data.content);
+    reconcileWithRemote(remote);
+    return true;
+  } catch (e) {
+    setGithubStatus('error');
+    return false;
+  }
+}
+
+// Merge remote state into local according to timestamps
+function reconcileWithRemote(remote) {
+  if (!remote || typeof remote !== 'object') return;
+
+  const localTs  = state.lastModified  ? new Date(state.lastModified).getTime()  : 0;
+  const remoteTs = remote.lastModified ? new Date(remote.lastModified).getTime() : 0;
+
+  if (remoteTs > localTs) {
+    // Remote is newer — adopt it, but keep local GitHub credentials
+    const localGhCreds = {
+      githubToken:    state.settings?.githubToken    || '',
+      githubRepo:     state.settings?.githubRepo     || '',
+      githubBranch:   state.settings?.githubBranch   || 'main',
+      githubFilePath: state.settings?.githubFilePath || 'academia_data.json',
+    };
+    state.courses        = Array.isArray(remote.courses)  ? remote.courses  : [];
+    state.students       = Array.isArray(remote.students) ? remote.students : [];
+    state.classes        = Array.isArray(remote.classes)  ? remote.classes  : [];
+    state.receiptCounter = remote.receiptCounter || 0;
+    state.lastModified   = remote.lastModified;
+    state.settings       = Object.assign({}, remote.settings || {}, localGhCreds);
+    // Ensure compat fields
+    state.students.forEach(s => { if (!Array.isArray(s.receipts)) s.receipts = []; });
+    saveLocalOnly();
+    renderAll();
+    showToast('Datos actualizados desde GitHub \u2713', 'success');
+  } else {
+    // Local is same age or newer — merge in any remote-only records
+    const localCourseIds  = new Set((state.courses  || []).map(c  => c.id));
+    const localStudentIds = new Set((state.students || []).map(s  => s.id));
+    const localClassIds   = new Set((state.classes  || []).map(cl => cl.id));
+    let changed = false;
+    (remote.courses  || []).forEach(c  => { if (!localCourseIds.has(c.id))  { state.courses.push(c);  changed = true; } });
+    (remote.students || []).forEach(s  => {
+      if (!localStudentIds.has(s.id)) {
+        if (!s.receipts) s.receipts = [];
+        state.students.push(s);
+        changed = true;
+      }
+    });
+    (remote.classes  || []).forEach(cl => { if (!localClassIds.has(cl.id))  { state.classes.push(cl); changed = true; } });
+    state.receiptCounter = Math.max(state.receiptCounter || 0, remote.receiptCounter || 0);
+    if (changed) {
+      saveLocalOnly();
+      renderAll();
+      showToast('Cambios remotos incorporados', 'success');
+    }
+    // Local is newer or equal — push our version to GitHub
+    scheduleGithubPush();
+  }
+  setGithubStatus('ok');
+}
+
+// Schedule a debounced push (2 s after last saveState)
+function scheduleGithubPush() {
+  if (!getGithubConfig()) return;
+  setGithubStatus('pending');
+  clearTimeout(githubSyncTimer);
+  githubSyncTimer = setTimeout(githubPush, 2000);
+}
+
+// Push current state to GitHub
+async function githubPush(retry) {
+  const cfg = getGithubConfig();
+  if (!cfg || githubSyncing) return;
+
+  githubSyncing = true;
+  setGithubStatus('syncing');
+
+  const content = stateToBase64();
+  const body    = {
+    message: `sync ${new Date().toLocaleString('es')}`,
+    content,
+    branch:  cfg.branch,
+  };
+  if (githubFileSha) body.sha = githubFileSha;
+
+  try {
+    const filePath = cfg.filePath.split('/').map(encodeURIComponent).join('/');
+    const url = `https://api.github.com/repos/${cfg.repo}/contents/${filePath}`;
+    const res = await fetch(url, {
+      method:  'PUT',
+      headers: githubApiHeaders(cfg.token),
+      body:    JSON.stringify(body),
+    });
+
+    if (res.status === 409 && !retry) {
+      // SHA mismatch: another device pushed first — pull, reconcile, then push again
+      githubSyncing = false;
+      const pulled = await githubPull();
+      if (pulled) await githubPush(true);
+      return;
+    }
+    if (res.status === 401 || res.status === 403) {
+      githubSyncing = false;
+      setGithubStatus('error');
+      showToast('GitHub: acceso denegado. Revisa el token.', 'error');
+      return;
+    }
+    if (!res.ok) {
+      githubSyncing = false;
+      setGithubStatus('error');
+      showToast(`GitHub push error ${res.status}`, 'error');
+      return;
+    }
+
+    const data    = await res.json();
+    githubFileSha = data.content?.sha || githubFileSha;
+    githubSyncing = false;
+    githubLastSync = new Date();
+    setGithubStatus('ok');
+  } catch (e) {
+    githubSyncing = false;
+    setGithubStatus('error');
+  }
+}
+
+// Manual sync triggered by the header button
+async function manualGithubSync() {
+  const cfg = getGithubConfig();
+  if (!cfg) {
+    showToast('Configura GitHub en Ajustes primero', 'error');
+    return;
+  }
+  await githubPull();
+}
+
+// Connection test triggered from settings modal
+async function testGithubConnection() {
+  const token    = document.getElementById('settings-gh-token').value.trim();
+  const repo     = document.getElementById('settings-gh-repo').value.trim();
+  const branch   = document.getElementById('settings-gh-branch').value.trim() || 'main';
+  const filePath = (document.getElementById('settings-gh-path').value.trim() || 'academia_data.json')
+    .split('/').map(encodeURIComponent).join('/');
+
+  if (!token || !repo) {
+    showToast('Introduce token y repositorio', 'error');
+    return;
+  }
+
+  const settingsLabel = document.getElementById('settings-github-label');
+  const settingsDot   = document.getElementById('settings-github-dot');
+  if (settingsLabel) settingsLabel.textContent = 'Comprobando\u2026';
+
+  try {
+    const url = `https://api.github.com/repos/${repo}/contents/${filePath}?ref=${encodeURIComponent(branch)}`;
+    const res = await fetch(url, { headers: githubApiHeaders(token) });
+    if (res.status === 200 || res.status === 404) {
+      if (settingsLabel) settingsLabel.textContent = res.status === 200 ? 'Conexi\u00f3n OK \u2713' : 'Repositorio encontrado (archivo se crear\u00e1 al guardar)';
+      if (settingsDot)   settingsDot.className = 'gcal-dot connected';
+      showToast('Conexi\u00f3n con GitHub correcta \u2713', 'success');
+    } else if (res.status === 401 || res.status === 403) {
+      if (settingsLabel) settingsLabel.textContent = 'Acceso denegado';
+      if (settingsDot)   settingsDot.className = 'gcal-dot disconnected';
+      showToast('GitHub: token sin permisos o incorrecto', 'error');
+    } else {
+      if (settingsLabel) settingsLabel.textContent = `Error ${res.status}`;
+      showToast(`GitHub error ${res.status}`, 'error');
+    }
+  } catch (e) {
+    if (settingsLabel) settingsLabel.textContent = 'Error de red';
+    showToast('Error de red al conectar con GitHub', 'error');
+  }
+}
+
 // ─── SETTINGS MODAL ──────────────────────────
 function openSettingsModal() {
   document.getElementById('settings-academy-name').value      = state.settings?.academyName    || '';
   document.getElementById('settings-gcal-client-id').value    = state.settings?.gcalClientId   || '';
   document.getElementById('settings-gcal-calendar-id').value  = state.settings?.gcalCalendarId || 'primary';
+  document.getElementById('settings-gh-token').value  = state.settings?.githubToken    || '';
+  document.getElementById('settings-gh-repo').value   = state.settings?.githubRepo     || '';
+  document.getElementById('settings-gh-branch').value = state.settings?.githubBranch   || 'main';
+  document.getElementById('settings-gh-path').value   = state.settings?.githubFilePath || 'academia_data.json';
   updateGCalUI();
+  setGithubStatus(githubStatus);
   openModal('modal-settings');
 }
 
@@ -1089,12 +1372,23 @@ function saveSettings() {
   const academyName    = document.getElementById('settings-academy-name').value.trim();
   const gcalClientId   = document.getElementById('settings-gcal-client-id').value.trim();
   const gcalCalendarId = document.getElementById('settings-gcal-calendar-id').value.trim() || 'primary';
-  state.settings = { academyName: academyName || 'Mi Academia', gcalClientId, gcalCalendarId };
+  const githubToken    = document.getElementById('settings-gh-token').value.trim();
+  const githubRepo     = document.getElementById('settings-gh-repo').value.trim();
+  const githubBranch   = document.getElementById('settings-gh-branch').value.trim()  || 'main';
+  const githubFilePath = document.getElementById('settings-gh-path').value.trim()    || 'academia_data.json';
+  state.settings = {
+    academyName: academyName || 'Mi Academia',
+    gcalClientId, gcalCalendarId,
+    githubToken, githubRepo, githubBranch, githubFilePath,
+  };
+  // Reset SHA so next push re-fetches it if repo changed
+  githubFileSha = null;
   saveState();
   closeModal('modal-settings');
   showToast('Ajustes guardados', 'success');
   gcalTokenClient = null;
   initGCalTokenClient();
+  setGithubStatus(getGithubConfig() ? 'pending' : 'unconfigured');
 }
 
 // ─── RECEIPTS ────────────────────────────────
@@ -1398,10 +1692,12 @@ function initEvents() {
 function init() {
   loadState();
   initEvents();
-  // Try to init GCal token client if GIS library already loaded
   initGCalTokenClient();
   updateGCalUI();
+  setGithubStatus(getGithubConfig() ? 'pending' : 'unconfigured');
   renderDashboard();
+  // Pull from GitHub in background after render
+  githubPull();
 }
 
 document.addEventListener('DOMContentLoaded', init);
