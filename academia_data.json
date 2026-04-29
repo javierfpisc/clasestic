@@ -38,7 +38,16 @@
       "course": "1TIC",
       "createdAt": "2026-04-29",
       "balance": 25,
-      "receipts": []
+      "receipts": [
+        {
+          "id": "mokmz4hn0tzo2",
+          "number": "202604-001",
+          "generatedAt": "2026-04-29",
+          "amount": 25,
+          "status": "pending",
+          "printedAt": null
+        }
+      ]
     },
     {
       "id": "mokmtiqy26hmp",
@@ -84,6 +93,6 @@
     "githubBranch": "main",
     "githubFilePath": "academia_data.json"
   },
-  "receiptCounter": 0,
-  "lastModified": "2026-04-29T22:37:27.056Z"
+  "receiptCounter": 1,
+  "lastModified": "2026-04-29T22:38:20.028Z"
 }
