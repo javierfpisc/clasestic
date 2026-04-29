@@ -45,7 +45,7 @@
       "phone": "6678432545",
       "course": "1TIC",
       "createdAt": "2026-04-29",
-      "balance": 25,
+      "balance": 40,
       "receipts": []
     }
   ],
@@ -72,6 +72,17 @@
       "studentIds": [
         "mokmmc7a1gt8s"
       ]
+    },
+    {
+      "id": "mokpcowaqy6ks",
+      "type": "individual",
+      "course": "",
+      "date": "2026-05-01",
+      "time": "03:00",
+      "fee": 15,
+      "studentIds": [
+        "mokmtiqy26hmp"
+      ]
     }
   ],
   "settings": {
@@ -84,5 +95,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 1,
-  "lastModified": "2026-04-29T23:41:25.974Z"
+  "lastModified": "2026-04-29T23:44:52.234Z"
 }
