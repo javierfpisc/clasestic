@@ -27,7 +27,7 @@
       "phone": "666534890",
       "course": "2TIC",
       "createdAt": "2026-04-29",
-      "balance": 25,
+      "balance": 0,
       "receipts": [
         {
           "id": "mokmz4hn0tzo2",
@@ -53,12 +53,11 @@
     {
       "id": "mokmn26ubglur",
       "type": "grupal",
-      "course": "",
+      "course": "1TIC",
       "date": "2026-04-30",
       "time": "00:00",
       "fee": 25,
       "studentIds": [
-        "mokmmc7a1gt8s",
         "mokmliibmj8b5",
         "mokmtiqy26hmp"
       ]
@@ -85,5 +84,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 1,
-  "lastModified": "2026-04-29T22:52:03.396Z"
+  "lastModified": "2026-04-29T22:52:13.177Z"
 }
