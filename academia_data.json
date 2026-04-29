@@ -25,7 +25,7 @@
       "id": "mokmmc7a1gt8s",
       "name": "Elsa CQ",
       "phone": "666534890",
-      "course": "",
+      "course": "2TIC",
       "createdAt": "2026-04-29",
       "balance": 25,
       "receipts": [
@@ -85,5 +85,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 1,
-  "lastModified": "2026-04-29T22:51:55.845Z"
+  "lastModified": "2026-04-29T22:52:00.111Z"
 }
