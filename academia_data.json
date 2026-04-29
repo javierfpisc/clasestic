@@ -18,7 +18,7 @@
       "phone": "667864543",
       "course": "2TIC",
       "createdAt": "2026-04-29",
-      "balance": 0
+      "balance": 25
     },
     {
       "id": "mokmmc7a1gt8s",
@@ -26,10 +26,23 @@
       "phone": "666534890",
       "course": "1TIC",
       "createdAt": "2026-04-29",
-      "balance": 0
+      "balance": 25
     }
   ],
-  "classes": [],
+  "classes": [
+    {
+      "id": "mokmn26ubglur",
+      "type": "grupal",
+      "course": "",
+      "date": "2026-04-30",
+      "time": "00:00",
+      "fee": 25,
+      "studentIds": [
+        "mokmmc7a1gt8s",
+        "mokmliibmj8b5"
+      ]
+    }
+  ],
   "settings": {
     "academyName": "Mi Academia",
     "gcalClientId": "",
@@ -40,5 +53,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 0,
-  "lastModified": "2026-04-29T22:28:28.805Z"
+  "lastModified": "2026-04-29T22:28:57.174Z"
 }
