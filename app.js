@@ -1113,7 +1113,7 @@ function getGithubConfig() {
 
 function githubApiHeaders(token) {
   return {
-    'Authorization':       `Bearer ${token}`,
+    'Authorization':       `token ${token}`,
     'Accept':              'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     'Content-Type':        'application/json',
@@ -1128,7 +1128,12 @@ function stateToBase64() {
       gcalClientId: '',   // OAuth client ID stays local
     }),
   });
-  return btoa(unescape(encodeURIComponent(JSON.stringify(safe, null, 2))));
+  const json = JSON.stringify(safe, null, 2);
+  // Use TextEncoder for proper UTF-8 encoding
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
 }
 
 // UTF-8 safe base64 decode
@@ -1264,11 +1269,19 @@ async function githubPush(retry) {
   githubSyncing = true;
   setGithubStatus('syncing');
 
+  // If we don't have the SHA, get it first
+  if (!githubFileSha && !retry) {
+    const pulled = await githubPull();
+    if (!pulled) {
+      githubSyncing = false;
+      return;
+    }
+  }
+
   const content = stateToBase64();
   const body    = {
     message: `sync ${new Date().toLocaleString('es')}`,
     content,
-    branch:  cfg.branch,
   };
   if (githubFileSha) body.sha = githubFileSha;
 
@@ -1297,7 +1310,10 @@ async function githubPush(retry) {
     if (!res.ok) {
       githubSyncing = false;
       setGithubStatus('error');
-      showToast(`GitHub push error ${res.status}`, 'error');
+      const errorData = await res.json().catch(() => ({}));
+      console.error('GitHub push error:', res.status, errorData);
+      const msg = errorData.message || `GitHub push error ${res.status}`;
+      showToast(msg, 'error');
       return;
     }
 
