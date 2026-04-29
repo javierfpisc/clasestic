@@ -19,6 +19,14 @@
       "course": "",
       "createdAt": "2026-04-29",
       "balance": 0
+    },
+    {
+      "id": "mokmmc7a1gt8s",
+      "name": "Elsa CQ",
+      "phone": "666534890",
+      "course": "1TIC",
+      "createdAt": "2026-04-29",
+      "balance": 0
     }
   ],
   "classes": [],
@@ -32,5 +40,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 0,
-  "lastModified": "2026-04-29T22:28:03.350Z"
+  "lastModified": "2026-04-29T22:28:23.494Z"
 }
