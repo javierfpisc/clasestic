@@ -16,7 +16,7 @@
       "id": "mokmliibmj8b5",
       "name": "Javier FP",
       "phone": "667864543",
-      "course": "",
+      "course": "1TIC",
       "createdAt": "2026-04-29",
       "balance": 25,
       "receipts": []
@@ -85,5 +85,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 1,
-  "lastModified": "2026-04-29T22:51:13.673Z"
+  "lastModified": "2026-04-29T22:51:55.845Z"
 }
