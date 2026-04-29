@@ -18,8 +18,7 @@
       "phone": "667864543",
       "course": "2TIC",
       "createdAt": "2026-04-29",
-      "balance": 25,
-      "receipts": []
+      "balance": 25
     },
     {
       "id": "mokmmc7a1gt8s",
@@ -27,8 +26,15 @@
       "phone": "666534890",
       "course": "1TIC",
       "createdAt": "2026-04-29",
-      "balance": 25,
-      "receipts": []
+      "balance": 25
+    },
+    {
+      "id": "mokmtiqy26hmp",
+      "name": "Leire AC",
+      "phone": "6678432545",
+      "course": "2TIC",
+      "createdAt": "2026-04-29",
+      "balance": 0
     }
   ],
   "classes": [
@@ -55,5 +61,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 0,
-  "lastModified": "2026-04-29T22:31:52.519Z"
+  "lastModified": "2026-04-29T22:33:58.570Z"
 }
