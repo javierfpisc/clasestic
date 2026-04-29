@@ -9,16 +9,6 @@
       "id": "mokall42oz0r0",
       "name": "2TIC",
       "description": ""
-    },
-    {
-      "id": "mokmlsidla2jv",
-      "name": "1TIC",
-      "description": ""
-    },
-    {
-      "id": "mokmlwnqms9hx",
-      "name": "2TIC",
-      "description": ""
     }
   ],
   "students": [
@@ -26,7 +16,7 @@
       "id": "mokmliibmj8b5",
       "name": "Javier FP",
       "phone": "667864543",
-      "course": "2TIC",
+      "course": "1TIC",
       "createdAt": "2026-04-29",
       "balance": 25,
       "receipts": []
@@ -35,9 +25,9 @@
       "id": "mokmmc7a1gt8s",
       "name": "Elsa CQ",
       "phone": "666534890",
-      "course": "1TIC",
+      "course": "2TIC",
       "createdAt": "2026-04-29",
-      "balance": 25,
+      "balance": 10,
       "receipts": [
         {
           "id": "mokmz4hn0tzo2",
@@ -53,22 +43,30 @@
       "id": "mokmtiqy26hmp",
       "name": "Leire AC",
       "phone": "6678432545",
-      "course": "2TIC",
+      "course": "1TIC",
       "createdAt": "2026-04-29",
-      "balance": 35,
-      "receipts": []
+      "balance": 40,
+      "receipts": [
+        {
+          "id": "mokpczh89dh7j",
+          "number": "202604-002",
+          "generatedAt": "2026-04-30",
+          "amount": 40,
+          "status": "pending",
+          "printedAt": null
+        }
+      ]
     }
   ],
   "classes": [
     {
       "id": "mokmn26ubglur",
       "type": "grupal",
-      "course": "",
+      "course": "1TIC",
       "date": "2026-04-30",
       "time": "00:00",
       "fee": 25,
       "studentIds": [
-        "mokmmc7a1gt8s",
         "mokmliibmj8b5",
         "mokmtiqy26hmp"
       ]
@@ -80,6 +78,17 @@
       "date": "2026-04-30",
       "time": "20:00",
       "fee": 10,
+      "studentIds": [
+        "mokmmc7a1gt8s"
+      ]
+    },
+    {
+      "id": "mokpcowaqy6ks",
+      "type": "individual",
+      "course": "",
+      "date": "2026-05-01",
+      "time": "03:00",
+      "fee": 15,
       "studentIds": [
         "mokmtiqy26hmp"
       ]
@@ -94,6 +103,6 @@
     "githubBranch": "main",
     "githubFilePath": "academia_data.json"
   },
-  "receiptCounter": 1,
-  "lastModified": "2026-04-29T22:42:40.114Z"
+  "receiptCounter": 2,
+  "lastModified": "2026-04-29T23:45:05.948Z"
 }
