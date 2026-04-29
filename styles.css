@@ -501,9 +501,18 @@ input::placeholder { color: var(--gray-400); }
   color: var(--primary);
   font-weight: 800;
 }
+.cal-day.past {
+  color: var(--gray-300);
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
 .cal-day.has-class { cursor: pointer; }
 .cal-day.has-class:hover { background: var(--gray-100); }
 .cal-day.today.has-class:hover { background: #c7d2fe; }
+.cal-day:not(.other-month):not(.past):not(.has-class):hover {
+  background: var(--gray-50);
+  cursor: pointer;
+}
 .class-dot {
   width: 5px; height: 5px;
   border-radius: 50%;

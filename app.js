@@ -63,7 +63,18 @@ function initials(name) {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function currentTimeStr() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
 // ─── PERSISTENCE ─────────────────────────────
@@ -488,12 +499,52 @@ function openNewClass(prefillDate) {
   document.getElementById('modal-class-title').textContent = 'Nueva clase';
   document.getElementById('class-id').value   = '';
   document.getElementById('class-type').value = 'individual';
-  document.getElementById('class-date').value = prefillDate || todayStr();
-  document.getElementById('class-time').value = '16:00';
+  
+  // Always use today or future date
+  const today = todayStr();
+  let proposedDate = prefillDate || today;
+  
+  // If prefilled date is in the past, use today instead
+  if (prefillDate && prefillDate < today) {
+    proposedDate = today;
+  }
+  
+  const dateInput = document.getElementById('class-date');
+  const timeInput = document.getElementById('class-time');
+  
+  dateInput.value = proposedDate;
+  dateInput.min = today;
+  
+  // Set time
+  const currentTime = currentTimeStr();
+  if (proposedDate === today) {
+    timeInput.value = currentTime;
+    timeInput.min = currentTime;
+  } else {
+    timeInput.value = '16:00';
+    timeInput.removeAttribute('min');
+  }
+  
   document.getElementById('class-fee').value  = '';
   populateCourseSelect('class-course', '');
   buildStudentsPicker([]);
   updateClassHint('individual');
+  
+  // Add listener for date changes
+  dateInput.onchange = function() {
+    const selectedDate = this.value;
+    const today = todayStr();
+    if (selectedDate === today) {
+      const now = currentTimeStr();
+      timeInput.min = now;
+      if (timeInput.value < now) {
+        timeInput.value = now;
+      }
+    } else {
+      timeInput.removeAttribute('min');
+    }
+  };
+  
   openModal('modal-class');
 }
 
@@ -503,12 +554,43 @@ function openEditClass(classId) {
   document.getElementById('modal-class-title').textContent = 'Editar clase';
   document.getElementById('class-id').value   = c.id;
   document.getElementById('class-type').value = c.type;
-  document.getElementById('class-date').value = c.date;
-  document.getElementById('class-time').value = c.time;
+  
+  const dateInput = document.getElementById('class-date');
+  const timeInput = document.getElementById('class-time');
+  const today = todayStr();
+  
+  dateInput.value = c.date;
+  dateInput.min = today;
+  timeInput.value = c.time;
+  
+  // Set time min if editing today's class
+  if (c.date === today) {
+    const currentTime = currentTimeStr();
+    timeInput.min = currentTime;
+  } else {
+    timeInput.removeAttribute('min');
+  }
+  
   document.getElementById('class-fee').value  = c.fee;
   populateCourseSelect('class-course', c.course || '');
   buildStudentsPicker(c.studentIds);
   updateClassHint(c.type);
+  
+  // Add listener for date changes
+  dateInput.onchange = function() {
+    const selectedDate = this.value;
+    const today = todayStr();
+    if (selectedDate === today) {
+      const now = currentTimeStr();
+      timeInput.min = now;
+      if (timeInput.value < now) {
+        timeInput.value = now;
+      }
+    } else {
+      timeInput.removeAttribute('min');
+    }
+  };
+  
   openModal('modal-class');
 }
 
@@ -596,6 +678,14 @@ function saveClass(e) {
   if (isNaN(fee) || fee < 0) { showToast('Cuota inválida', 'error'); return; }
   if (studentIds.length === 0) { showToast('Selecciona al menos un alumno', 'error'); return; }
   if (type === 'individual' && studentIds.length > 1) { showToast('Clase individual: solo 1 alumno', 'error'); return; }
+
+  // Check if date/time is in the past
+  const classDateTime = new Date(`${date}T${time}`);
+  const now = new Date();
+  if (classDateTime < now) {
+    showToast('No se puede crear una clase en el pasado', 'error');
+    return;
+  }
 
   // Check for time conflict (same date+time, different id)
   const conflict = state.classes.find(c => c.date === date && c.time === time && c.id !== id);
@@ -748,6 +838,7 @@ function renderCalendar() {
 
     const cellDate = new Date(year, isOther ? (i < startDow ? month - 1 : month + 1) : month, dayNum);
     const isToday  = cellDate.getTime() === todayDate.getTime();
+    const isPast   = cellDate < todayDate;
     const classes  = classMap[dateStr] || [];
     const hasClass = classes.length > 0;
 
@@ -755,9 +846,15 @@ function renderCalendar() {
       `<div class="class-dot ${c.type}"></div>`
     ).join('');
 
+    // Allow clicking on today or future dates
+    const clickable = !isPast;
+    const clickAction = hasClass 
+      ? `onclick="openDayClasses('${dateStr}')"` 
+      : (clickable && !isOther ? `onclick="openNewClass('${dateStr}')"` : '');
+
     html += `
-      <div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}${hasClass ? ' has-class' : ''}"
-           ${hasClass ? `onclick="openDayClasses('${dateStr}')"` : ''}>
+      <div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}${hasClass ? ' has-class' : ''}${isPast ? ' past' : ''}"
+           ${clickAction}>
         ${dayNum}
         ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
       </div>`;
@@ -767,8 +864,10 @@ function renderCalendar() {
 }
 
 function formatDateStr(year, month, day) {
-  const d = new Date(year, month, day);
-  return d.toISOString().slice(0, 10);
+  const y = year;
+  const m = String(month + 1).padStart(2, '0');
+  const d = String(day).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function openDayClasses(dateStr) {
