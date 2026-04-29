@@ -37,7 +37,7 @@
       "phone": "666534890",
       "course": "1TIC",
       "createdAt": "2026-04-29",
-      "balance": 0,
+      "balance": 25,
       "receipts": [
         {
           "id": "mokmz4hn0tzo2",
@@ -55,7 +55,7 @@
       "phone": "6678432545",
       "course": "2TIC",
       "createdAt": "2026-04-29",
-      "balance": 10,
+      "balance": 35,
       "receipts": []
     }
   ],
@@ -68,7 +68,9 @@
       "time": "00:00",
       "fee": 25,
       "studentIds": [
-        "mokmliibmj8b5"
+        "mokmmc7a1gt8s",
+        "mokmliibmj8b5",
+        "mokmtiqy26hmp"
       ]
     },
     {
@@ -93,5 +95,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 1,
-  "lastModified": "2026-04-29T22:42:21.997Z"
+  "lastModified": "2026-04-29T22:42:40.114Z"
 }
