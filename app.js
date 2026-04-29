@@ -1120,9 +1120,15 @@ function githubApiHeaders(token) {
   };
 }
 
-// UTF-8 safe base64 encode
+// UTF-8 safe base64 encode — strips local-only credentials before upload
 function stateToBase64() {
-  return btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
+  const safe = Object.assign({}, state, {
+    settings: Object.assign({}, state.settings, {
+      githubToken:  '',   // never stored remotely
+      gcalClientId: '',   // OAuth client ID stays local
+    }),
+  });
+  return btoa(unescape(encodeURIComponent(JSON.stringify(safe, null, 2))));
 }
 
 // UTF-8 safe base64 decode
