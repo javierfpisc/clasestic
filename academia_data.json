@@ -43,7 +43,7 @@
       "id": "mokmtiqy26hmp",
       "name": "Leire AC",
       "phone": "6678432545",
-      "course": "",
+      "course": "1TIC",
       "createdAt": "2026-04-29",
       "balance": 35,
       "receipts": []
@@ -85,5 +85,5 @@
     "githubFilePath": "academia_data.json"
   },
   "receiptCounter": 1,
-  "lastModified": "2026-04-29T22:52:00.111Z"
+  "lastModified": "2026-04-29T22:52:03.396Z"
 }
