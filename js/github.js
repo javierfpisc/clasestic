@@ -24,25 +24,74 @@ function githubApiHeaders(token) {
   };
 }
 
-// UTF-8 safe base64 encode — strips local-only credentials before upload
-function stateToBase64() {
+// --- Crypto helpers (AES-256-GCM + PBKDF2) ---
+
+// Derive an AES-GCM key from a token string and a random salt
+async function deriveKey(token, salt) {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(token),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+// Encrypt state JSON and return base64 string: [salt(16)][iv(12)][ciphertext]
+async function stateToEncryptedContent(token) {
   const safe = Object.assign({}, window.App.state, {
     settings: Object.assign({}, window.App.state.settings, {
       githubToken:  '',   // never stored remotely
       gcalClientId: '',   // OAuth client ID stays local
     }),
   });
-  const json = JSON.stringify(safe, null, 2);
-  // Use TextEncoder for proper UTF-8 encoding
-  const bytes = new TextEncoder().encode(json);
+  const json  = JSON.stringify(safe, null, 2);
+  const salt  = crypto.getRandomValues(new Uint8Array(16));
+  const iv    = crypto.getRandomValues(new Uint8Array(12));
+  const key   = await deriveKey(token, salt);
+  const cipher = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(json)
+  );
+  const combined = new Uint8Array(16 + 12 + cipher.byteLength);
+  combined.set(salt, 0);
+  combined.set(iv, 16);
+  combined.set(new Uint8Array(cipher), 28);
   let binary = '';
-  bytes.forEach(b => binary += String.fromCharCode(b));
+  combined.forEach(b => binary += String.fromCharCode(b));
   return btoa(binary);
 }
 
-// UTF-8 safe base64 decode
-function base64ToObj(b64) {
-  return JSON.parse(decodeURIComponent(escape(atob(b64.replace(/\n/g, '')))));
+// Decrypt base64 content from GitHub; falls back to plain base64-JSON for
+// files created before encryption was introduced.
+async function contentToObj(b64, token) {
+  const raw = b64.replace(/\n/g, '');
+  try {
+    const binary = atob(raw);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const salt       = bytes.slice(0, 16);
+    const iv         = bytes.slice(16, 28);
+    const ciphertext = bytes.slice(28);
+    const key        = await deriveKey(token, salt);
+    const decrypted  = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      ciphertext
+    );
+    return JSON.parse(new TextDecoder().decode(decrypted));
+  } catch (_) {
+    // Fallback: file was stored without encryption (plain base64 JSON)
+    return JSON.parse(decodeURIComponent(escape(atob(raw))));
+  }
 }
 
 window.App.setGithubStatusUI = function(status) {
@@ -95,7 +144,7 @@ window.App.githubPull = async function() {
 
     const data = await res.json();
     window.App.setGithubFileSha(data.sha);
-    const remote = base64ToObj(data.content);
+    const remote = await contentToObj(data.content, cfg.token);
     reconcileWithRemote(remote);
     return true;
   } catch (e) {
@@ -182,14 +231,14 @@ window.App.githubPush = async function(retry) {
     }
   }
 
-  const content = stateToBase64();
-  const body    = {
-    message: `sync ${new Date().toLocaleString('es')}`,
-    content,
-  };
-  if (window.App.githubFileSha) body.sha = window.App.githubFileSha;
-
   try {
+    const content = await stateToEncryptedContent(cfg.token);
+    const body    = {
+      message: `sync ${new Date().toLocaleString('es')}`,
+      content,
+    };
+    if (window.App.githubFileSha) body.sha = window.App.githubFileSha;
+
     const filePath = cfg.filePath.split('/').map(encodeURIComponent).join('/');
     const url = `https://api.github.com/repos/${cfg.repo}/contents/${filePath}`;
     const res = await fetch(url, {
@@ -208,7 +257,10 @@ window.App.githubPush = async function(retry) {
     if (res.status === 401 || res.status === 403) {
       window.App.setGithubSyncing(false);
       window.App.setGithubStatusUI('error');
-      window.App.showToast(window.App.MESSAGES.errorGithubAccess, 'error');
+      const errBody = await res.json().catch(() => ({}));
+      console.error(`GitHub push ${res.status}:`, errBody);
+      const hint = errBody.message ? ` (${errBody.message})` : '';
+      window.App.showToast(window.App.MESSAGES.errorGithubAccess + hint, 'error');
       return;
     }
     if (!res.ok) {
