@@ -148,7 +148,9 @@ window.App.githubPull = async function() {
     reconcileWithRemote(remote);
     return true;
   } catch (e) {
+    console.error('GitHub pull error:', e);
     window.App.setGithubStatusUI('error');
+    window.App.showToast('Error al descargar datos de GitHub: ' + (e.message || e), 'error');
     return false;
   }
 };
@@ -160,7 +162,13 @@ function reconcileWithRemote(remote) {
   const localTs  = window.App.state.lastModified  ? new Date(window.App.state.lastModified).getTime()  : 0;
   const remoteTs = remote.lastModified ? new Date(remote.lastModified).getTime() : 0;
 
-  if (remoteTs > localTs) {
+  // On a fresh device the user just saved credentials (localTs = now) but has
+  // no actual data. Always adopt remote when local collections are empty.
+  const localIsEmpty = !window.App.state.courses?.length &&
+                       !window.App.state.students?.length &&
+                       !window.App.state.classes?.length;
+
+  if (remoteTs > localTs || localIsEmpty) {
     // Remote is newer — adopt it, but keep local GitHub credentials
     const localGhCreds = {
       githubToken:    window.App.state.settings?.githubToken    || '',
