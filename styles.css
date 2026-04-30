@@ -238,12 +238,31 @@ body {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 .search-bar input[type="text"],
 .search-bar input[type="date"],
 .search-bar select {
   flex: 1;
   min-width: 0;
+}
+.filter-future-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: var(--gray-600);
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.filter-future-label input[type="checkbox"] {
+  width: auto;
+  min-width: 0;
+  flex: none;
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
 /* =============================================

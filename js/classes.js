@@ -10,10 +10,16 @@ window.App.renderClasses = function() {
 }
 
 window.App.applyClassFilters = function() {
-  const date = document.getElementById('class-filter-date').value;
-  const type = document.getElementById('class-filter-type').value;
+  const date        = document.getElementById('class-filter-date').value;
+  const type        = document.getElementById('class-filter-type').value;
+  const onlyFuture  = document.getElementById('class-filter-future').checked;
 
   let classes = [...window.App.state.classes].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  if (onlyFuture) {
+    const today = window.App.todayStr();
+    const nowTime = window.App.currentTimeStr();
+    classes = classes.filter(c => c.date > today || (c.date === today && c.time >= nowTime));
+  }
   if (date) classes = classes.filter(c => c.date === date);
   if (type) classes = classes.filter(c => c.type === type);
 
@@ -384,6 +390,7 @@ window.App.initClassEvents = function() {
   document.getElementById('class-course').addEventListener('change', updatePickerByCourse);
   document.getElementById('class-filter-date').addEventListener('change', window.App.applyClassFilters);
   document.getElementById('class-filter-type').addEventListener('change', window.App.applyClassFilters);
+  document.getElementById('class-filter-future').addEventListener('change', window.App.applyClassFilters);
   
   document.getElementById('btn-detail-edit').addEventListener('click', () => {
     window.App.closeModal('modal-class-detail');
