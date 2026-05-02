@@ -333,6 +333,12 @@ window.App.markReceiptAsPaid = function(studentId, receiptId) {
   r.paidAt = window.App.todayStr();
   
   window.App.saveState();
+  
+  // Update modal if it's open for this student
+  if (window.App.currentReceiptsStudentId === studentId) {
+    renderReceiptsModal(s);
+  }
+  
   window.App.renderCurrentTab();
   window.App.showToast(`Recibo ${r.number} marcado como pagado`, 'success');
 }

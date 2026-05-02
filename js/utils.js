@@ -11,15 +11,25 @@ window.App.calculateStudentBalance = function(studentId) {
   
   const today = window.App.todayStr();
   
-  // Sum fees from past classes (date <= today)
-  const classesTotal = window.App.state.classes
-    .filter(c => c.date <= today && c.studentIds.includes(studentId))
-    .reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
+  // Get past classes
+  const pastClasses = window.App.state.classes.filter(c => c.date <= today && c.studentIds.includes(studentId));
   
-  // Sum amounts from sent/paid receipts
-  const receiptsTotal = (s.receipts || [])
+  // Sum fees from past classes (date <= today)
+  const classesTotal = pastClasses.reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
+  
+  // Sum amounts from sent and paid receipts (already billed)
+  const studentReceipts = s.receipts || [];
+  const receiptsTotal = studentReceipts
     .filter(r => r.status === 'sent' || r.status === 'paid')
     .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+  
+  // Debug logging (remove after verification)
+  if (window.location.hash === '#debug') {
+    console.log(`[${s.name}] Today: ${today}`);
+    console.log('Past classes:', pastClasses.map(c => ({date: c.date, fee: c.fee, isPast: c.date <= today})));
+    console.log(`Classes Total: ${classesTotal}€, Receipts Total: ${receiptsTotal}€, Balance: ${classesTotal - receiptsTotal}€`);
+    console.log('Receipts:', studentReceipts.map(r => ({number: r.number, amount: r.amount, status: r.status})));
+  }
   
   return Math.max(0, classesTotal - receiptsTotal);
 };
