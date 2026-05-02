@@ -5,6 +5,9 @@
 
 window.App = window.App || {};
 
+// Track if user manually edited the fee in the current modal
+let userEditedFee = false;
+
 window.App.renderClasses = function() {
   window.App.applyClassFilters();
 }
@@ -84,6 +87,7 @@ function buildClassCard(c) {
 }
 
 window.App.openNewClass = function(prefillDate) {
+  userEditedFee = false; // Reset flag for new class
   document.getElementById('modal-class-title').textContent = 'Nueva clase';
   document.getElementById('class-id').value   = '';
   document.getElementById('class-type').value = 'individual';
@@ -142,6 +146,7 @@ window.App.openNewClass = function(prefillDate) {
 window.App.openEditClass = function(classId) {
   const c = window.App.state.classes.find(c => c.id === classId);
   if (!c) return;
+  userEditedFee = true; // Existing class already has a fee set
   document.getElementById('modal-class-title').textContent = 'Editar clase';
   document.getElementById('class-id').value   = c.id;
   document.getElementById('class-type').value = c.type;
@@ -244,13 +249,19 @@ function updateClassTypeUI(type) {
   
   if (type === 'grupal') {
     groupSelector.style.display = 'block';
-    const defaultFee = window.App.state.settings?.defaultGroupFee || 10;
-    feeInput.value = defaultFee;
+    // Only set default fee if user hasn't manually edited it
+    if (!userEditedFee) {
+      const defaultFee = window.App.state.settings?.defaultGroupFee || 10;
+      feeInput.value = defaultFee;
+    }
   } else {
     groupSelector.style.display = 'none';
     document.getElementById('class-group').value = '';
-    const defaultFee = window.App.state.settings?.defaultIndividualFee || 15;
-    feeInput.value = defaultFee;
+    // Only set default fee if user hasn't manually edited it
+    if (!userEditedFee) {
+      const defaultFee = window.App.state.settings?.defaultIndividualFee || 15;
+      feeInput.value = defaultFee;
+    }
   }
   
   updateClassHint(type);
@@ -418,6 +429,11 @@ window.App.initClassEvents = function() {
   document.getElementById('class-filter-date').addEventListener('change', window.App.applyClassFilters);
   document.getElementById('class-filter-type').addEventListener('change', window.App.applyClassFilters);
   document.getElementById('class-filter-future').addEventListener('change', window.App.applyClassFilters);
+  
+  // Track manual fee edits
+  document.getElementById('class-fee').addEventListener('input', () => {
+    userEditedFee = true;
+  });
   
   document.getElementById('btn-detail-edit').addEventListener('click', () => {
     window.App.closeModal('modal-class-detail');
