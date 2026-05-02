@@ -151,9 +151,12 @@ window.App.githubPull = async function() {
     const res = await fetch(url, { headers: githubApiHeaders(cfg.token) });
 
     if (res.status === 404) {
-      // File not yet in repo — first run, local state is the source of truth
+      // File not yet in repo — upload local state as first version
       window.App.setGithubFileSha(null);
+      console.log('[GitHub] File not found in repo, creating encrypted file...');
       window.App.setGithubStatusUI('ok');
+      // Trigger push to create the file
+      setTimeout(() => window.App.githubPush(), 500);
       return true;
     }
     if (res.status === 401 || res.status === 403) {
