@@ -28,7 +28,7 @@
       "phone": "667864543",
       "course": "2TIC",
       "createdAt": "2026-04-29",
-      "balance": 25,
+      "balance": 35,
       "receipts": []
     },
     {
@@ -37,7 +37,7 @@
       "phone": "666534890",
       "course": "1TIC",
       "createdAt": "2026-04-29",
-      "balance": 25,
+      "balance": 35,
       "receipts": [
         {
           "id": "mokmz4hn0tzo2",
@@ -55,7 +55,7 @@
       "phone": "6678432545",
       "course": "2TIC",
       "createdAt": "2026-04-29",
-      "balance": 35,
+      "balance": 45,
       "receipts": []
     }
   ],
@@ -95,6 +95,20 @@
       "studentIds": [
         "mokmtiqy26hmp"
       ]
+    },
+    {
+      "id": "moo5joncak5ac",
+      "type": "grupal",
+      "course": "",
+      "date": "2026-05-02",
+      "time": "12:41",
+      "fee": 10,
+      "studentIds": [
+        "mokmmc7a1gt8s",
+        "mokmliibmj8b5",
+        "mokmtiqy26hmp"
+      ],
+      "groupId": "moo5j2iub02qo"
     }
   ],
   "settings": {
@@ -109,5 +123,5 @@
     "defaultGroupFee": 10
   },
   "receiptCounter": 1,
-  "lastModified": "2026-05-02T09:41:02.214Z"
+  "lastModified": "2026-05-02T09:41:30.888Z"
 }
