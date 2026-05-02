@@ -173,6 +173,16 @@ window.App.githubPull = async function() {
     const data = await res.json();
     window.App.setGithubFileSha(data.sha);
     const remote = await encryptedBase64ToObj(data.content, cfg.token);
+    
+    // If decryption failed (remote is null), file is corrupted or wrong key
+    if (!remote) {
+      console.warn('[GitHub] Cannot decrypt remote file - resetting SHA to force overwrite');
+      window.App.setGithubFileSha(null);
+      window.App.setGithubStatusUI('pending');
+      setTimeout(() => window.App.githubPush(), 1000);
+      return false;
+    }
+    
     reconcileWithRemote(remote);
     return true;
   } catch (e) {
