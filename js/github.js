@@ -295,10 +295,11 @@ window.App.githubPush = async function(retry) {
     });
 
     if (res.status === 409 && !retry) {
-      // SHA mismatch: another device pushed first — pull, reconcile, then push again
+      // SHA mismatch: try without SHA to force overwrite corrupted file
+      console.warn('[GitHub] 409 conflict - trying force overwrite without SHA');
+      window.App.setGithubFileSha(null);
       window.App.setGithubSyncing(false);
-      const pulled = await window.App.githubPull();
-      if (pulled) await window.App.githubPush(true);
+      await window.App.githubPush(true);
       return;
     }
     if (res.status === 401 || res.status === 403) {
