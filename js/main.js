@@ -8,6 +8,8 @@ window.App = window.App || {};
 // Settings modal functions
 function openSettingsModal() {
   document.getElementById('settings-academy-name').value      = window.App.state.settings?.academyName    || '';
+  document.getElementById('settings-default-individual-fee').value = window.App.state.settings?.defaultIndividualFee ?? 15;
+  document.getElementById('settings-default-group-fee').value = window.App.state.settings?.defaultGroupFee ?? 10;
   document.getElementById('settings-gcal-client-id').value    = window.App.state.settings?.gcalClientId   || '';
   document.getElementById('settings-gcal-calendar-id').value  = window.App.state.settings?.gcalCalendarId || 'primary';
   document.getElementById('settings-gh-token').value  = window.App.state.settings?.githubToken    || '';
@@ -21,6 +23,8 @@ function openSettingsModal() {
 
 function saveSettings() {
   const academyName    = document.getElementById('settings-academy-name').value.trim();
+  const defaultIndividualFee = parseFloat(document.getElementById('settings-default-individual-fee').value) || 15;
+  const defaultGroupFee = parseFloat(document.getElementById('settings-default-group-fee').value) || 10;
   const gcalClientId   = document.getElementById('settings-gcal-client-id').value.trim();
   const gcalCalendarId = document.getElementById('settings-gcal-calendar-id').value.trim() || 'primary';
   const githubToken    = document.getElementById('settings-gh-token').value.trim();
@@ -30,6 +34,8 @@ function saveSettings() {
   
   window.App.state.settings = {
     academyName: academyName || 'Mi Academia',
+    defaultIndividualFee,
+    defaultGroupFee,
     gcalClientId, gcalCalendarId,
     githubToken, githubRepo, githubBranch, githubFilePath,
   };
@@ -64,9 +70,6 @@ function initEvents() {
   // Settings
   if (document.getElementById('btn-settings')) {
     document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
-  }
-  if (document.getElementById('btn-gcal-status')) {
-    document.getElementById('btn-gcal-status').addEventListener('click', openSettingsModal);
   }
   if (document.getElementById('btn-save-settings')) {
     document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
@@ -106,22 +109,26 @@ function initEvents() {
   window.App.initConfirmEvents();
   window.App.initStudentEvents();
   window.App.initClassEvents();
+  window.App.initGroupEvents();
   window.App.initCourseEvents();
   window.App.initCalendarEvents();
   window.App.initDashboardEvents();
 }
 
 // Main initialization
-function init() {
+async function init() {
   window.App.loadState();
   initEvents();
   window.App.initGCalTokenClient();
   window.App.updateGCalUI();
   window.App.initGithubStatus();
-  window.App.renderDashboard();
   
-  // Pull from GitHub in background after render
-  window.App.githubPull();
+  // Pull from GitHub FIRST to ensure we have latest data
+  // This will overwrite local data if GitHub has newer version
+  const pulled = await window.App.githubPull();
+  
+  // Now render with the latest data (either from GitHub or local)
+  window.App.renderDashboard();
 }
 
 // Make functions globally available for onclick handlers and Google SDK callback

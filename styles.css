@@ -920,3 +920,75 @@ input::placeholder { color: var(--gray-400); }
   0%, 100% { opacity: 1;   transform: scale(1);    }
   50%       { opacity: 0.5; transform: scale(0.75); }
 }
+
+/* =============================================
+   Groups
+   ============================================= */
+#groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group-card {
+  background: var(--white);
+  padding: 16px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: box-shadow var(--transition);
+}
+
+.group-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.group-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.group-card-header h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  flex: 1;
+}
+
+.group-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.group-description {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.group-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.group-student-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.group-students {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  padding: 8px 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+}
+

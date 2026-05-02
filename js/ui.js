@@ -51,6 +51,9 @@ window.App.switchTab = function(tabName) {
   if (tabName === 'calendar') {
     window.App.renderCalendar();
   }
+  if (tabName === 'groups') {
+    window.App.renderGroups();
+  }
   if (tabName === 'courses') {
     window.App.renderCourses();
   }
@@ -73,6 +76,9 @@ window.App.renderCurrentTab = function() {
   }
   if (tab === 'calendar') {
     window.App.renderCalendar();
+  }
+  if (tab === 'groups') {
+    window.App.renderGroups();
   }
   if (tab === 'courses') {
     window.App.renderCourses();

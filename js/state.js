@@ -6,10 +6,13 @@ window.App = window.App || {};
 
 window.App.state = {
   courses:  [],   // { id, name, description }
-  students: [],   // { id, name, phone, course, createdAt, balance, receipts[] }
-  classes:  [],   // { id, type, course, date, time, fee, studentIds, gcalEventId? }
+  students: [],   // { id, name, phone, course, groups, createdAt, balance, receipts[] }
+  groups:   [],   // { id, name, description, studentIds[] }
+  classes:  [],   // { id, type, course, date, time, fee, studentIds, groupId, gcalEventId? }
   settings: {
     academyName: 'Mi Academia',
+    defaultIndividualFee: 15,
+    defaultGroupFee: 10,
     gcalClientId: '',
     gcalCalendarId: 'primary',
     githubToken: '',
@@ -33,6 +36,7 @@ window.App.gcalAccessToken = null;
 // GitHub state
 window.App.githubFileSha = null;
 window.App.githubSyncTimer = null;
+window.App.githubPullTimer = null;
 window.App.githubSyncing = false;
 window.App.githubLastSync = null;
 window.App.githubStatus = 'unconfigured';

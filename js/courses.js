@@ -23,7 +23,6 @@ window.App.renderCourses = function() {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(c => {
       const studentCount = window.App.state.students.filter(s => s.course === c.name).length;
-      const classCount   = window.App.state.classes.filter(cl => cl.course === c.name).length;
       return `
         <div class="card">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
@@ -32,7 +31,6 @@ window.App.renderCourses = function() {
               ${c.description ? `<div style="font-size:0.78rem;color:var(--gray-500);margin-top:2px">${window.App.escHtml(c.description)}</div>` : ''}
               <div style="font-size:0.75rem;color:var(--gray-400);margin-top:5px">
                 <span class="detail-student-chip">${studentCount} alumno${studentCount !== 1 ? 's' : ''}</span>
-                <span class="detail-student-chip">${classCount} clase${classCount !== 1 ? 's' : ''}</span>
               </div>
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
@@ -82,9 +80,8 @@ window.App.saveCourse = function(e) {
       const oldName = c.name;
       c.name = name;
       c.description = description;
-      // Rename references in students and classes
+      // Rename references in students
       window.App.state.students.forEach(s  => { if (s.course   === oldName) s.course   = name; });
-      window.App.state.classes.forEach(cl  => { if (cl.course  === oldName) cl.course  = name; });
     }
   } else {
     window.App.state.courses.push({ id: window.App.uid(), name, description });
@@ -100,16 +97,14 @@ window.App.deleteCourse = function(courseId) {
   const c = window.App.state.courses.find(c => c.id === courseId);
   if (!c) return;
   const studentCount = window.App.state.students.filter(s => s.course === c.name).length;
-  const classCount   = window.App.state.classes.filter(cl => cl.course === c.name).length;
-  const extra = studentCount + classCount > 0
-    ? ` Se borrará la referencia en ${studentCount} alumno${studentCount !== 1 ? 's' : ''} y ${classCount} clase${classCount !== 1 ? 's' : ''}.`
+  const extra = studentCount > 0
+    ? ` Se borrará la referencia en ${studentCount} alumno${studentCount !== 1 ? 's' : ''}.`
     : '';
   window.App.confirmAction(
     'Eliminar curso',
     `¿Eliminar el curso "${c.name}"?${extra}`,
     () => {
       window.App.state.students.forEach(s  => { if (s.course  === c.name) s.course  = ''; });
-      window.App.state.classes.forEach(cl  => { if (cl.course === c.name) cl.course = ''; });
       window.App.state.courses = window.App.state.courses.filter(co => co.id !== courseId);
       window.App.saveState();
       window.App.renderCurrentTab();

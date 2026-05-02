@@ -47,7 +47,9 @@ window.App.loadState = function() {
   // backward-compat: ensure new fields exist
   if (!window.App.state.settings) {
     window.App.state.settings = { 
-      academyName: window.App.CONFIG.defaultAcademyName, 
+      academyName: window.App.CONFIG.defaultAcademyName,
+      defaultIndividualFee: 15,
+      defaultGroupFee: 10,
       gcalClientId: '', 
       gcalCalendarId: 'primary',
       githubToken: '',
@@ -57,11 +59,14 @@ window.App.loadState = function() {
     };
   }
   if (!window.App.state.settings.academyName)    window.App.state.settings.academyName    = window.App.CONFIG.defaultAcademyName;
+  if (window.App.state.settings.defaultIndividualFee === undefined) window.App.state.settings.defaultIndividualFee = 15;
+  if (window.App.state.settings.defaultGroupFee === undefined) window.App.state.settings.defaultGroupFee = 10;
   if (!window.App.state.settings.gcalCalendarId) window.App.state.settings.gcalCalendarId = 'primary';
   if (!window.App.state.settings.githubToken)    window.App.state.settings.githubToken    = '';
   if (!window.App.state.settings.githubRepo)     window.App.state.settings.githubRepo     = '';
   if (!window.App.state.settings.githubBranch)   window.App.state.settings.githubBranch   = 'main';
   if (!window.App.state.settings.githubFilePath) window.App.state.settings.githubFilePath = 'academia_data.json';
+  if (!Array.isArray(window.App.state.groups))   window.App.state.groups = [];
   if (!window.App.state.receiptCounter) window.App.state.receiptCounter = 0;
   if (!window.App.state.lastModified)   window.App.state.lastModified   = null;
   window.App.state.students.forEach(s => { if (!Array.isArray(s.receipts)) s.receipts = []; });

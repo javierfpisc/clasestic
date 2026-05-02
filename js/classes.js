@@ -46,6 +46,19 @@ function buildClassCard(c) {
   const gcalBadge = c.gcalEventId
     ? `<span class="gcal-synced-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> GCal</span>`
     : '';
+  
+  // Determine display name: group name for group classes, student name for individual
+  let displayName = '';
+  if (c.type === 'grupal' && c.groupId) {
+    const group = window.App.state.groups?.find(g => g.id === c.groupId);
+    displayName = group ? `Grupo: ${window.App.escHtml(group.name)}` : `${c.studentIds.length} alumnos`;
+  } else if (c.type === 'individual' && c.studentIds.length === 1) {
+    const student = window.App.state.students.find(s => s.id === c.studentIds[0]);
+    displayName = student ? window.App.escHtml(student.name) : '?';
+  } else {
+    displayName = `${c.studentIds.length} alumno${c.studentIds.length !== 1 ? 's' : ''}: ${studentNames.slice(0, 3).join(', ')}${studentNames.length > 3 ? '...' : ''}`;
+  }
+  
   return `
     <div class="class-card" onclick="window.openClassDetail('${c.id}')">
       <div class="class-card-header">
@@ -58,11 +71,9 @@ function buildClassCard(c) {
           ${window.App.fmtDate(c.date)} · <span style="font-weight:600">${window.App.dayOfWeek(c.date)}</span> · ${c.time}${gcalBadge}
         </span>
       </div>
-      <div class="class-course">${window.App.escHtml(c.course || '–')}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
         <div class="class-students-count">
-          ${c.studentIds.length} alumno${c.studentIds.length !== 1 ? 's' : ''}:
-          ${studentNames.slice(0, 3).join(', ')}${studentNames.length > 3 ? '...' : ''}
+          ${displayName}
         </div>
         <div style="text-align:right">
           <div class="class-fee">${window.App.fmtCurrency(c.fee)}<small style="font-weight:400;color:var(--gray-400)"> /alumno</small></div>
@@ -102,10 +113,13 @@ window.App.openNewClass = function(prefillDate) {
     timeInput.removeAttribute('min');
   }
   
-  document.getElementById('class-fee').value  = '';
-  populateCourseSelect('class-course', '');
+  // Set default fee
+  const defaultFee = window.App.state.settings?.defaultIndividualFee || 15;
+  document.getElementById('class-fee').value = defaultFee;
+  
+  populateGroupSelect('');
   buildStudentsPicker([]);
-  updateClassHint('individual');
+  updateClassTypeUI('individual');
   
   // Add listener for date changes
   dateInput.onchange = function() {
@@ -149,9 +163,9 @@ window.App.openEditClass = function(classId) {
   }
   
   document.getElementById('class-fee').value  = c.fee;
-  populateCourseSelect('class-course', c.course || '');
+  populateGroupSelect(c.groupId || '');
   buildStudentsPicker(c.studentIds);
-  updateClassHint(c.type);
+  updateClassTypeUI(c.type);
   
   // Add listener for date changes
   dateInput.onchange = function() {
@@ -172,20 +186,13 @@ window.App.openEditClass = function(classId) {
 }
 
 function buildStudentsPicker(selectedIds) {
-  const type       = document.getElementById('class-type').value;
-  const courseFilter = document.getElementById('class-course').value;
-  const picker     = document.getElementById('class-students-picker');
+  const type = document.getElementById('class-type').value;
+  const picker = document.getElementById('class-students-picker');
 
-  // Filter students by course (if one is selected)
   let students = window.App.state.students.slice().sort((a, b) => a.name.localeCompare(b.name));
-  if (courseFilter) {
-    students = students.filter(s => s.course === courseFilter);
-  }
 
   if (students.length === 0) {
-    picker.innerHTML = `<p style="color:var(--gray-400);font-size:0.8rem;padding:8px">${
-      courseFilter ? 'No hay alumnos en este curso' : 'Sin alumnos registrados'
-    }</p>`;
+    picker.innerHTML = `<p style="color:var(--gray-400);font-size:0.8rem;padding:8px">Sin alumnos registrados</p>`;
     return;
   }
 
@@ -200,7 +207,7 @@ function buildStudentsPicker(selectedIds) {
             <polyline points="2 6 5 9 10 3"/>
           </svg>
         </div>
-        <span class="picker-name">${window.App.escHtml(s.name)} <small style="color:var(--gray-400)">(${window.App.escHtml(s.course || '–')})</small></span>
+        <span class="picker-name">${window.App.escHtml(s.name)}</span>
       </label>`;
   }).join('');
 
@@ -226,13 +233,47 @@ function updateClassHint(type) {
   const hint = document.getElementById('class-students-hint');
   hint.textContent = type === 'individual'
     ? 'Selecciona exactamente un alumno'
-    : 'Selecciona uno o más alumnos';
+    : 'Selecciona uno o más alumnos (o usa un grupo)';
   buildStudentsPicker(getPickerSelected());
 }
 
-function updatePickerByCourse() {
-  // Rebuild picker preserving current selection (only keeps those still visible)
-  buildStudentsPicker(getPickerSelected());
+function updateClassTypeUI(type) {
+  const groupSelector = document.getElementById('class-group-selector');
+  const studentsSelector = document.getElementById('class-students-selector');
+  const feeInput = document.getElementById('class-fee');
+  
+  if (type === 'grupal') {
+    groupSelector.style.display = 'block';
+    const defaultFee = window.App.state.settings?.defaultGroupFee || 10;
+    feeInput.value = defaultFee;
+  } else {
+    groupSelector.style.display = 'none';
+    document.getElementById('class-group').value = '';
+    const defaultFee = window.App.state.settings?.defaultIndividualFee || 15;
+    feeInput.value = defaultFee;
+  }
+  
+  updateClassHint(type);
+}
+
+function populateGroupSelect(selectedValue) {
+  const select = document.getElementById('class-group');
+  const groups = window.App.state.groups || [];
+  const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+  
+  select.innerHTML = '<option value="">– Seleccionar grupo –</option>' +
+    sorted.map(g => `<option value="${g.id}" ${g.id === selectedValue ? 'selected' : ''}>${window.App.escHtml(g.name)}</option>`).join('');
+}
+
+function onGroupChange(e) {
+  const groupId = e.target.value;
+  if (groupId) {
+    const group = window.App.state.groups?.find(g => g.id === groupId);
+    if (group && group.studentIds) {
+      // Auto-select all students in the group
+      buildStudentsPicker(group.studentIds);
+    }
+  }
 }
 
 function getPickerSelected() {
@@ -245,10 +286,12 @@ window.App.saveClass = function(e) {
   e.preventDefault();
   const id     = document.getElementById('class-id').value;
   const type   = document.getElementById('class-type').value;
-  const course = document.getElementById('class-course').value;
   const date   = document.getElementById('class-date').value;
   const time   = document.getElementById('class-time').value;
   const fee    = parseFloat(document.getElementById('class-fee').value);
+  const groupId = document.getElementById('class-group').value;
+  
+  // Always use students selected in the picker (allows deselecting group members)
   const studentIds = getPickerSelected();
 
   if (!date || !time) { window.App.showToast('Fecha y hora obligatorias', 'error'); return; }
@@ -283,7 +326,7 @@ window.App.saveClass = function(e) {
         if (s) s.balance = Math.max(0, (parseFloat(s.balance) || 0) - (parseFloat(existing.fee) || 0));
       });
       // Update class
-      Object.assign(existing, { type, course, date, time, fee, studentIds });
+      Object.assign(existing, { type, date, time, fee, studentIds, groupId: groupId || null });
       // Apply new fee
       studentIds.forEach(sid => {
         const s = window.App.state.students.find(s => s.id === sid);
@@ -297,7 +340,7 @@ window.App.saveClass = function(e) {
       const s = window.App.state.students.find(s => s.id === sid);
       if (s) s.balance = (parseFloat(s.balance) || 0) + fee;
     });
-    window.App.state.classes.push({ id: newId, type, course, date, time, fee, studentIds });
+    window.App.state.classes.push({ id: newId, type, date, time, fee, studentIds, groupId: groupId || null });
   }
 
   window.App.saveState();
@@ -366,28 +409,12 @@ window.App.deleteClass = function(classId) {
   );
 }
 
-function populateCourseSelect(selectId, selectedValue) {
-  const sel = document.getElementById(selectId);
-  const sorted = window.App.state.courses.slice().sort((a, b) => a.name.localeCompare(b.name));
-  sel.innerHTML = `<option value="">– Sin curso –</option>` +
-    sorted.map(c =>
-      `<option value="${window.App.escHtml(c.name)}" ${selectedValue === c.name ? 'selected' : ''}>${window.App.escHtml(c.name)}</option>`
-    ).join('');
-  // If there are orphan course names (old data) not in courses list, add them too
-  if (selectedValue && !sorted.find(c => c.name === selectedValue)) {
-    sel.innerHTML += `<option value="${window.App.escHtml(selectedValue)}" selected>${window.App.escHtml(selectedValue)} (sin lista)</option>`;
-  }
-  if (sorted.length === 0) {
-    sel.innerHTML += `<option value="" disabled style="color:var(--gray-400)">— Crea cursos desde la pestaña Cursos —</option>`;
-  }
-}
-
 // Initialize class events
 window.App.initClassEvents = function() {
   document.getElementById('btn-new-class').addEventListener('click', () => window.App.openNewClass());
   document.getElementById('form-class').addEventListener('submit', window.App.saveClass);
-  document.getElementById('class-type').addEventListener('change', (e) => updateClassHint(e.target.value));
-  document.getElementById('class-course').addEventListener('change', updatePickerByCourse);
+  document.getElementById('class-type').addEventListener('change', (e) => updateClassTypeUI(e.target.value));
+  document.getElementById('class-group').addEventListener('change', onGroupChange);
   document.getElementById('class-filter-date').addEventListener('change', window.App.applyClassFilters);
   document.getElementById('class-filter-type').addEventListener('change', window.App.applyClassFilters);
   document.getElementById('class-filter-future').addEventListener('change', window.App.applyClassFilters);

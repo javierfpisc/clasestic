@@ -24,19 +24,23 @@ function githubApiHeaders(token) {
   };
 }
 
-// --- Crypto helpers (AES-256-GCM + PBKDF2) ---
-
-// Derive an AES-GCM key from a token string and a random salt
-async function deriveKey(token, salt) {
+// Derive AES-GCM key from GitHub token
+async function deriveKey(token) {
+  const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(token),
+    encoder.encode(token),
     { name: 'PBKDF2' },
     false,
-    ['deriveKey']
+    ['deriveBits', 'deriveKey']
   );
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    {
+      name: 'PBKDF2',
+      salt: encoder.encode('academia-tic-salt'),
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -44,53 +48,74 @@ async function deriveKey(token, salt) {
   );
 }
 
-// Encrypt state JSON and return base64 string: [salt(16)][iv(12)][ciphertext]
-async function stateToEncryptedContent(token) {
+// Encrypt state to base64 using AES-GCM with GitHub token as key
+async function stateToEncryptedBase64(token) {
   const safe = Object.assign({}, window.App.state, {
     settings: Object.assign({}, window.App.state.settings, {
       githubToken:  '',   // never stored remotely
       gcalClientId: '',   // OAuth client ID stays local
     }),
   });
-  const json  = JSON.stringify(safe, null, 2);
-  const salt  = crypto.getRandomValues(new Uint8Array(16));
-  const iv    = crypto.getRandomValues(new Uint8Array(12));
-  const key   = await deriveKey(token, salt);
-  const cipher = await crypto.subtle.encrypt(
+  const json = JSON.stringify(safe, null, 2);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(json);
+  
+  const key = await deriveKey(token);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
-    new TextEncoder().encode(json)
+    data
   );
-  const combined = new Uint8Array(16 + 12 + cipher.byteLength);
-  combined.set(salt, 0);
-  combined.set(iv, 16);
-  combined.set(new Uint8Array(cipher), 28);
+  
+  // Concatenate IV + encrypted data
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  
+  // Convert to base64
   let binary = '';
   combined.forEach(b => binary += String.fromCharCode(b));
   return btoa(binary);
 }
 
-// Decrypt base64 content from GitHub; falls back to plain base64-JSON for
-// files created before encryption was introduced.
-async function contentToObj(b64, token) {
-  const raw = b64.replace(/\n/g, '');
+// Decrypt base64 content using AES-GCM with GitHub token as key
+async function encryptedBase64ToObj(b64, token) {
   try {
-    const binary = atob(raw);
-    const bytes  = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const salt       = bytes.slice(0, 16);
-    const iv         = bytes.slice(16, 28);
-    const ciphertext = bytes.slice(28);
-    const key        = await deriveKey(token, salt);
-    const decrypted  = await crypto.subtle.decrypt(
+    const binary = atob(b64.replace(/\n/g, ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    
+    // Extract IV and encrypted data
+    const iv = bytes.slice(0, 12);
+    const encrypted = bytes.slice(12);
+    
+    const key = await deriveKey(token);
+    const decrypted = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv },
       key,
-      ciphertext
+      encrypted
     );
-    return JSON.parse(new TextDecoder().decode(decrypted));
-  } catch (_) {
-    // Fallback: file was stored without encryption (plain base64 JSON)
-    return JSON.parse(decodeURIComponent(escape(atob(raw))));
+    
+    const json = new TextDecoder().decode(decrypted);
+    return JSON.parse(json);
+  } catch (e) {
+    console.error('Error decrypting content:', e);
+    // Try legacy plain base64 format for backward compatibility
+    try {
+      const binary = atob(b64.replace(/\n/g, ''));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const json = new TextDecoder().decode(bytes);
+      return JSON.parse(json);
+    } catch (e2) {
+      console.error('Error decoding legacy base64:', e2);
+      return null;
+    }
   }
 }
 
@@ -144,13 +169,13 @@ window.App.githubPull = async function() {
 
     const data = await res.json();
     window.App.setGithubFileSha(data.sha);
-    const remote = await contentToObj(data.content, cfg.token);
+    const remote = await encryptedBase64ToObj(data.content, cfg.token);
     reconcileWithRemote(remote);
     return true;
   } catch (e) {
     console.error('GitHub pull error:', e);
     window.App.setGithubStatusUI('error');
-    window.App.showToast('Error al descargar datos de GitHub: ' + (e.message || e), 'error');
+    // Don't show toast for periodic background pulls
     return false;
   }
 };
@@ -162,13 +187,7 @@ function reconcileWithRemote(remote) {
   const localTs  = window.App.state.lastModified  ? new Date(window.App.state.lastModified).getTime()  : 0;
   const remoteTs = remote.lastModified ? new Date(remote.lastModified).getTime() : 0;
 
-  // On a fresh device the user just saved credentials (localTs = now) but has
-  // no actual data. Always adopt remote when local collections are empty.
-  const localIsEmpty = !window.App.state.courses?.length &&
-                       !window.App.state.students?.length &&
-                       !window.App.state.classes?.length;
-
-  if (remoteTs > localTs || localIsEmpty) {
+  if (remoteTs > localTs) {
     // Remote is newer — adopt it, but keep local GitHub credentials
     const localGhCreds = {
       githubToken:    window.App.state.settings?.githubToken    || '',
@@ -176,21 +195,27 @@ function reconcileWithRemote(remote) {
       githubBranch:   window.App.state.settings?.githubBranch   || 'main',
       githubFilePath: window.App.state.settings?.githubFilePath || 'academia_data.json',
     };
+    const localGcalClientId = window.App.state.settings?.gcalClientId || '';
     window.App.state.courses        = Array.isArray(remote.courses)  ? remote.courses  : [];
     window.App.state.students       = Array.isArray(remote.students) ? remote.students : [];
+    window.App.state.groups         = Array.isArray(remote.groups)   ? remote.groups   : [];
     window.App.state.classes        = Array.isArray(remote.classes)  ? remote.classes  : [];
     window.App.state.receiptCounter = remote.receiptCounter || 0;
     window.App.state.lastModified   = remote.lastModified;
-    window.App.state.settings       = Object.assign({}, remote.settings || {}, localGhCreds);
+    window.App.state.settings       = Object.assign({}, remote.settings || {}, localGhCreds, { gcalClientId: localGcalClientId });
     // Ensure compat fields
     window.App.state.students.forEach(s => { if (!Array.isArray(s.receipts)) s.receipts = []; });
+    if (!window.App.state.settings.defaultIndividualFee) window.App.state.settings.defaultIndividualFee = 15;
+    if (!window.App.state.settings.defaultGroupFee) window.App.state.settings.defaultGroupFee = 10;
     window.App.saveLocalOnly();
     window.App.renderAll();
-    window.App.showToast(window.App.MESSAGES.githubPullOk, 'success');
+    const remoteDate = new Date(remote.lastModified).toLocaleString('es');
+    window.App.showToast(`Datos actualizados desde GitHub (${remoteDate})`, 'success');
   } else {
     // Local is same age or newer — merge in any remote-only records
     const localCourseIds  = new Set((window.App.state.courses  || []).map(c  => c.id));
     const localStudentIds = new Set((window.App.state.students || []).map(s  => s.id));
+    const localGroupIds   = new Set((window.App.state.groups   || []).map(g  => g.id));
     const localClassIds   = new Set((window.App.state.classes  || []).map(cl => cl.id));
     let changed = false;
     (remote.courses  || []).forEach(c  => { if (!localCourseIds.has(c.id))  { window.App.state.courses.push(c);  changed = true; } });
@@ -201,6 +226,7 @@ function reconcileWithRemote(remote) {
         changed = true;
       }
     });
+    (remote.groups   || []).forEach(g  => { if (!localGroupIds.has(g.id))   { window.App.state.groups.push(g);   changed = true; } });
     (remote.classes  || []).forEach(cl => { if (!localClassIds.has(cl.id))  { window.App.state.classes.push(cl); changed = true; } });
     window.App.state.receiptCounter = Math.max(window.App.state.receiptCounter || 0, remote.receiptCounter || 0);
     if (changed) {
@@ -239,14 +265,14 @@ window.App.githubPush = async function(retry) {
     }
   }
 
-  try {
-    const content = await stateToEncryptedContent(cfg.token);
-    const body    = {
-      message: `sync ${new Date().toLocaleString('es')}`,
-      content,
-    };
-    if (window.App.githubFileSha) body.sha = window.App.githubFileSha;
+  const content = await stateToEncryptedBase64(cfg.token);
+  const body    = {
+    message: `sync ${new Date().toLocaleString('es')}`,
+    content,
+  };
+  if (window.App.githubFileSha) body.sha = window.App.githubFileSha;
 
+  try {
     const filePath = cfg.filePath.split('/').map(encodeURIComponent).join('/');
     const url = `https://api.github.com/repos/${cfg.repo}/contents/${filePath}`;
     const res = await fetch(url, {
@@ -265,10 +291,7 @@ window.App.githubPush = async function(retry) {
     if (res.status === 401 || res.status === 403) {
       window.App.setGithubSyncing(false);
       window.App.setGithubStatusUI('error');
-      const errBody = await res.json().catch(() => ({}));
-      console.error(`GitHub push ${res.status}:`, errBody);
-      const hint = errBody.message ? ` (${errBody.message})` : '';
-      window.App.showToast(window.App.MESSAGES.errorGithubAccess + hint, 'error');
+      window.App.showToast(window.App.MESSAGES.errorGithubAccess, 'error');
       return;
     }
     if (!res.ok) {
@@ -289,6 +312,17 @@ window.App.githubPush = async function(retry) {
   } catch (e) {
     window.App.setGithubSyncing(false);
     window.App.setGithubStatusUI('error');
+    console.error('GitHub push network error:', e);
+    
+    // Retry once after a delay if it's a network error
+    if (!retry) {
+      setTimeout(async () => {
+        console.log('[GitHub] Retrying push after network error...');
+        await window.App.githubPush(true);
+      }, 3000);
+    } else {
+      window.App.showToast('Error de conexión con GitHub', 'error');
+    }
   }
 };
 
@@ -344,4 +378,34 @@ window.App.testGithubConnection = async function() {
 window.App.initGithubStatus = function() {
   const cfg = window.App.getGithubConfig();
   window.App.setGithubStatusUI(cfg ? 'pending' : 'unconfigured');
+  
+  // Start periodic pull every 5 minutes if configured
+  if (cfg) {
+    window.App.startPeriodicGithubPull();
+  }
+};
+
+// Start periodic pull timer
+window.App.startPeriodicGithubPull = function() {
+  // Clear any existing timer
+  if (window.App.githubPullTimer) {
+    clearInterval(window.App.githubPullTimer);
+  }
+  
+  // Pull every 5 minutes
+  window.App.githubPullTimer = setInterval(async () => {
+    const cfg = window.App.getGithubConfig();
+    if (cfg && !window.App.githubSyncing) {
+      console.log('[GitHub] Periodic pull...');
+      await window.App.githubPull();
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+};
+
+// Stop periodic pull timer
+window.App.stopPeriodicGithubPull = function() {
+  if (window.App.githubPullTimer) {
+    clearInterval(window.App.githubPullTimer);
+    window.App.githubPullTimer = null;
+  }
 };
