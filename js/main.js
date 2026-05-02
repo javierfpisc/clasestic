@@ -16,6 +16,7 @@ function openSettingsModal() {
   document.getElementById('settings-gh-repo').value   = window.App.state.settings?.githubRepo     || '';
   document.getElementById('settings-gh-branch').value = window.App.state.settings?.githubBranch   || 'main';
   document.getElementById('settings-gh-path').value   = window.App.state.settings?.githubFilePath || 'academia_data.json';
+  document.getElementById('settings-whatsapp-phone').value = window.App.state.settings?.whatsappPhone || '';
   window.App.updateGCalUI();
   window.App.setGithubStatus(window.App.githubStatus);
   window.App.openModal('modal-settings');
@@ -31,6 +32,7 @@ function saveSettings() {
   const githubRepo     = document.getElementById('settings-gh-repo').value.trim();
   const githubBranch   = document.getElementById('settings-gh-branch').value.trim()  || 'main';
   const githubFilePath = document.getElementById('settings-gh-path').value.trim()    || 'academia_data.json';
+  const whatsappPhone  = document.getElementById('settings-whatsapp-phone').value.trim();
   
   window.App.state.settings = {
     academyName: academyName || 'Mi Academia',
@@ -38,6 +40,7 @@ function saveSettings() {
     defaultGroupFee,
     gcalClientId, gcalCalendarId,
     githubToken, githubRepo, githubBranch, githubFilePath,
+    whatsappPhone,
   };
   
   // Reset SHA so next push re-fetches it if repo changed
@@ -110,6 +113,7 @@ function initEvents() {
   window.App.initStudentEvents();
   window.App.initClassEvents();
   window.App.initGroupEvents();
+  window.App.initReceiptEvents();
   window.App.initCourseEvents();
   window.App.initCalendarEvents();
   window.App.initDashboardEvents();

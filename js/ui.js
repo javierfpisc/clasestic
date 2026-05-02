@@ -54,6 +54,9 @@ window.App.switchTab = function(tabName) {
   if (tabName === 'groups') {
     window.App.renderGroups();
   }
+  if (tabName === 'receipts') {
+    window.App.renderReceipts();
+  }
   if (tabName === 'courses') {
     window.App.renderCourses();
   }
@@ -79,6 +82,9 @@ window.App.renderCurrentTab = function() {
   }
   if (tab === 'groups') {
     window.App.renderGroups();
+  }
+  if (tab === 'receipts') {
+    window.App.renderReceipts();
   }
   if (tab === 'courses') {
     window.App.renderCourses();

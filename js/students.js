@@ -43,7 +43,7 @@ window.App.applyStudentFilters = function() {
 }
 
 window.App.buildStudentCard = function(s) {
-  const balance = parseFloat(s.balance) || 0;
+  const balance = window.App.calculateStudentBalance(s.id);
   const isDebt  = balance > 0;
   const pendingReceipts = (s.receipts || []).filter(r => r.status === 'pending');
   return `
@@ -64,11 +64,10 @@ window.App.buildStudentCard = function(s) {
         <button class="btn btn-icon" onclick="window.openEditStudent('${s.id}')" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        ${isDebt ? `<button class="btn btn-sm btn-primary" onclick="window.generateReceipt('${s.id}')" title="Generar recibo PDF">
+        <button class="btn btn-sm ${isDebt ? 'btn-primary' : 'btn-secondary'}" onclick="window.openStudentReceipts('${s.id}')" title="Ver histórico de recibos">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Recibo
-        </button>` : ''}
-        ${(s.receipts || []).length > 0 && !isDebt ? `<button class="btn btn-sm btn-secondary" onclick="window.openStudentReceipts('${s.id}')">Ver recibos</button>` : ''}
+          Recibos
+        </button>
         <button class="btn btn-icon" style="color:var(--danger)" onclick="window.deleteStudent('${s.id}')" title="Eliminar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>

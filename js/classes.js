@@ -327,30 +327,15 @@ window.App.saveClass = function(e) {
   }
 
   if (id) {
-    // Editing existing class: first reverse previous fee for these students,
-    // then apply new fee
+    // Editing existing class
     const existing = window.App.state.classes.find(c => c.id === id);
     if (existing) {
-      // Reverse old fee
-      existing.studentIds.forEach(sid => {
-        const s = window.App.state.students.find(s => s.id === sid);
-        if (s) s.balance = Math.max(0, (parseFloat(s.balance) || 0) - (parseFloat(existing.fee) || 0));
-      });
-      // Update class
+      // Update class (balance is calculated dynamically, no need to adjust)
       Object.assign(existing, { type, date, time, fee, studentIds, groupId: groupId || null });
-      // Apply new fee
-      studentIds.forEach(sid => {
-        const s = window.App.state.students.find(s => s.id === sid);
-        if (s) s.balance = (parseFloat(s.balance) || 0) + fee;
-      });
     }
   } else {
-    // New class: add fee to each student balance
+    // New class (balance is calculated dynamically, no need to adjust)
     const newId = window.App.uid();
-    studentIds.forEach(sid => {
-      const s = window.App.state.students.find(s => s.id === sid);
-      if (s) s.balance = (parseFloat(s.balance) || 0) + fee;
-    });
     window.App.state.classes.push({ id: newId, type, date, time, fee, studentIds, groupId: groupId || null });
   }
 
@@ -402,15 +387,11 @@ window.App.deleteClass = function(classId) {
   if (!c) return;
   window.App.confirmAction(
     'Eliminar clase',
-    `¿Eliminar esta clase? Se restarán ${window.App.fmtCurrency(c.fee)} del saldo de cada alumno.`,
+    `¿Eliminar esta clase?`,
     async () => {
       // Remove from Google Calendar if synced
       if (c.gcalEventId) await window.App.deleteGCalEvent(c);
-      // Reverse fees
-      c.studentIds.forEach(sid => {
-        const s = window.App.state.students.find(s => s.id === sid);
-        if (s) s.balance = Math.max(0, (parseFloat(s.balance) || 0) - (parseFloat(c.fee) || 0));
-      });
+      // Delete class (balance is calculated dynamically, no need to adjust)
       window.App.state.classes = window.App.state.classes.filter(cl => cl.id !== classId);
       window.App.saveState();
       window.App.closeModal('modal-class-detail');

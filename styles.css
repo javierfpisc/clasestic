@@ -838,6 +838,14 @@ input::placeholder { color: var(--gray-400); }
   background: var(--warning-light);
   color: #b45309;
 }
+.receipt-status-badge.sent {
+  background: #fef3c7;
+  color: #f59e0b;
+}
+.receipt-status-badge.paid {
+  background: var(--success-light);
+  color: #15803d;
+}
 .receipt-status-badge.printed {
   background: var(--success-light);
   color: #15803d;

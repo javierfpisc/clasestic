@@ -4,6 +4,26 @@
 
 window.App = window.App || {};
 
+// Calculate student balance dynamically based on past classes
+window.App.calculateStudentBalance = function(studentId) {
+  const s = window.App.state.students.find(st => st.id === studentId);
+  if (!s) return 0;
+  
+  const today = window.App.todayStr();
+  
+  // Sum fees from past classes (date <= today)
+  const classesTotal = window.App.state.classes
+    .filter(c => c.date <= today && c.studentIds.includes(studentId))
+    .reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
+  
+  // Sum amounts from sent/paid receipts
+  const receiptsTotal = (s.receipts || [])
+    .filter(r => r.status === 'sent' || r.status === 'paid')
+    .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+  
+  return Math.max(0, classesTotal - receiptsTotal);
+};
+
 window.App.uid = function() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 };
