@@ -1,16 +1,6 @@
 {
   "courses": [
     {
-      "id": "mokale398t0gk",
-      "name": "1TIC",
-      "description": ""
-    },
-    {
-      "id": "mokall42oz0r0",
-      "name": "2TIC",
-      "description": ""
-    },
-    {
       "id": "mokmlsidla2jv",
       "name": "1TIC",
       "description": ""
@@ -26,7 +16,7 @@
       "id": "mokmliibmj8b5",
       "name": "Javier FP",
       "phone": "667864543",
-      "course": "2TIC",
+      "course": "",
       "createdAt": "2026-04-29",
       "balance": 35,
       "receipts": []
@@ -35,7 +25,7 @@
       "id": "mokmmc7a1gt8s",
       "name": "Elsa CQ",
       "phone": "666534890",
-      "course": "1TIC",
+      "course": "",
       "createdAt": "2026-04-29",
       "balance": 35,
       "receipts": [
@@ -53,7 +43,7 @@
       "id": "mokmtiqy26hmp",
       "name": "Leire AC",
       "phone": "6678432545",
-      "course": "2TIC",
+      "course": "",
       "createdAt": "2026-04-29",
       "balance": 45,
       "receipts": []
@@ -88,7 +78,7 @@
     {
       "id": "mokmtzdlcmpuc",
       "type": "individual",
-      "course": "2TIC",
+      "course": "",
       "date": "2026-04-30",
       "time": "20:00",
       "fee": 10,
@@ -123,5 +113,5 @@
     "defaultGroupFee": 10
   },
   "receiptCounter": 1,
-  "lastModified": "2026-05-02T09:41:30.888Z"
+  "lastModified": "2026-05-02T09:44:07.203Z"
 }
