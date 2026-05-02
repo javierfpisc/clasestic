@@ -18,7 +18,7 @@
       "phone": "667864543",
       "course": "",
       "createdAt": "2026-04-29",
-      "balance": 45,
+      "balance": 65,
       "receipts": []
     },
     {
@@ -27,7 +27,7 @@
       "phone": "666534890",
       "course": "",
       "createdAt": "2026-04-29",
-      "balance": 55,
+      "balance": 75,
       "receipts": [
         {
           "id": "mokmz4hn0tzo2",
@@ -45,7 +45,7 @@
       "phone": "6678432545",
       "course": "",
       "createdAt": "2026-04-29",
-      "balance": 65,
+      "balance": 85,
       "receipts": []
     }
   ],
@@ -131,7 +131,7 @@
       "type": "grupal",
       "date": "2026-05-02",
       "time": "13:51",
-      "fee": 10,
+      "fee": 30,
       "studentIds": [
         "mokmmc7a1gt8s",
         "mokmliibmj8b5",
@@ -152,5 +152,5 @@
     "defaultGroupFee": 10
   },
   "receiptCounter": 1,
-  "lastModified": "2026-05-02T09:51:15.475Z"
+  "lastModified": "2026-05-02T09:51:37.173Z"
 }
