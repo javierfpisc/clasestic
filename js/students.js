@@ -43,18 +43,26 @@ window.App.applyStudentFilters = function() {
 }
 
 window.App.buildStudentCard = function(s) {
-  const balance = window.App.calculateStudentBalance(s.id);
-  const isDebt  = balance > 0;
   const pendingReceipts = (s.receipts || []).filter(r => r.status === 'pending');
+  
+  // Get student groups
+  const studentGroups = window.App.state.groups.filter(g => (g.studentIds || []).includes(s.id));
+  const groupsText = studentGroups.length > 0 
+    ? studentGroups.map(g => g.name).join(', ')
+    : '–';
+  
   return `
     <div class="student-card">
       <div class="student-avatar">${window.App.initials(s.name)}</div>
       <div class="student-info">
         <div class="student-name">${window.App.escHtml(s.name)}</div>
-        <div class="student-meta">${window.App.escHtml(s.course || '–')}${s.phone ? ' · ' + window.App.escHtml(s.phone) : ''}</div>
-        <span class="balance-badge ${isDebt ? 'debt' : 'paid'}">
-          ${isDebt ? '⚠ ' + window.App.fmtCurrency(balance) : '✓ Al corriente'}
-        </span>
+        <div class="student-meta">
+          ${s.course ? '<strong>Curso:</strong> ' + window.App.escHtml(s.course) : ''}
+          ${s.course && studentGroups.length > 0 ? ' · ' : ''}
+          ${studentGroups.length > 0 ? '<strong>Grupos:</strong> ' + window.App.escHtml(groupsText) : ''}
+          ${(s.course || studentGroups.length > 0) && s.phone ? '<br>' : ''}
+          ${s.phone ? '📱 ' + window.App.escHtml(s.phone) : ''}
+        </div>
         ${pendingReceipts.length > 0 ? `
           <button class="receipt-pending-badge" onclick="window.openStudentReceipts('${s.id}')">
             📄 ${pendingReceipts.length} recibo${pendingReceipts.length !== 1 ? 's' : ''} pendiente${pendingReceipts.length !== 1 ? 's' : ''}
@@ -64,7 +72,7 @@ window.App.buildStudentCard = function(s) {
         <button class="btn btn-icon" onclick="window.openEditStudent('${s.id}')" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button class="btn btn-sm ${isDebt ? 'btn-primary' : 'btn-secondary'}" onclick="window.openStudentReceipts('${s.id}')" title="Ver histórico de recibos">
+        <button class="btn btn-sm btn-primary" onclick="window.openStudentReceipts('${s.id}')" title="Ver histórico de recibos">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Recibos
         </button>

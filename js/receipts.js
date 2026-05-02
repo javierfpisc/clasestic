@@ -30,11 +30,33 @@ function doGenerateReceipt(s) {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const seq   = String(window.App.state.receiptCounter).padStart(3, '0');
 
+  // Get classes to bill: past classes not yet billed
+  const today = window.App.todayStr();
+  const billedClassIds = new Set();
+  
+  // Get all class IDs already in paid receipts only
+  (s.receipts || []).forEach(r => {
+    if (r.status === 'paid' && r.classIds) {
+      r.classIds.forEach(id => billedClassIds.add(id));
+    }
+  });
+  
+  // Get unbilled past classes
+  const classesToBill = window.App.state.classes
+    .filter(c => c.date <= today && c.studentIds.includes(s.id) && !billedClassIds.has(c.id))
+    .map(c => c.id);
+  
+  const amount = classesToBill.reduce((sum, classId) => {
+    const c = window.App.state.classes.find(cl => cl.id === classId);
+    return sum + (parseFloat(c.fee) || 0);
+  }, 0);
+
   const receipt = {
     id:          window.App.uid(),
     number:      `${year}${month}-${seq}`,
     generatedAt: window.App.todayStr(),
-    amount:      window.App.calculateStudentBalance(s.id),
+    amount:      amount,
+    classIds:    classesToBill,  // Track which classes are being billed
     status:      'pending',  // pending | sent | paid
     sentAt:      null,
     paidAt:      null,
@@ -43,7 +65,7 @@ function doGenerateReceipt(s) {
   s.receipts.push(receipt);
   window.App.saveState();
   window.App.renderCurrentTab();
-  window.App.showToast(`Recibo ${receipt.number} generado`, 'success');
+  window.App.showToast(`Recibo ${receipt.number} generado · ${window.App.fmtCurrency(amount)}`, 'success');
   window.App.openStudentReceipts(s.id);
 }
 
@@ -176,19 +198,62 @@ window.App.downloadReceiptPdf = function(studentId, receiptId) {
   doc.setTextColor(79, 70, 229);
   doc.text(window.App.fmtCurrency(r.amount), margin + 4, y + 17);
 
-  // Concept
+  // Classes detail
   y += 30;
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(107, 114, 128);
-  doc.text('CONCEPTO', margin + 4, y);
-  doc.setFontSize(9);
+  doc.text('DETALLE DE CLASES', margin + 4, y);
+  
+  // Get classes from receipt
+  const classIds = r.classIds || [];
+  const classes = classIds
+    .map(id => window.App.state.classes.find(c => c.id === id))
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  
+  y += 6;
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(31, 41, 55);
-  doc.text('Clases recibidas' + (s.course ? '  ·  ' + s.course : ''), margin + 4, y + 7);
+  
+  if (classes.length > 0) {
+    // Table header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(107, 114, 128);
+    doc.text('FECHA', margin + 4, y);
+    doc.text('TIPO', margin + 30, y);
+    doc.text('IMPORTE', margin + contentW - 4, y, { align: 'right' });
+    
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(31, 41, 55);
+    
+    classes.forEach(c => {
+      if (y > pageH - 35) {
+        // New page if needed
+        doc.addPage();
+        y = margin;
+      }
+      
+      const classType = c.type === 'individual' ? 'Individual' : 
+                       (c.groupId ? window.App.state.groups.find(g => g.id === c.groupId)?.name || 'Grupo' : 'Grupo');
+      
+      doc.text(window.App.fmtDate(c.date), margin + 4, y);
+      doc.text(classType, margin + 30, y);
+      doc.text(window.App.fmtCurrency(c.fee), margin + contentW - 4, y, { align: 'right' });
+      y += 5;
+    });
+  } else {
+    doc.setTextColor(156, 163, 175);
+    doc.text('Sin clases registradas', margin + 4, y);
+    y += 5;
+  }
 
   // Divider
-  y += 18;
+  y += 8;
   doc.setDrawColor(209, 213, 219);
   doc.setLineWidth(0.3);
   doc.line(margin, y, pageW - margin, y);
@@ -215,22 +280,99 @@ window.App.downloadReceiptPdf = function(studentId, receiptId) {
 
 // Render receipts panel (all receipts grouped by student)
 window.App.renderReceipts = function() {
+  // Populate month filter with available months from receipts (last 12 months only)
+  const monthSet = new Set();
+  window.App.state.students.forEach(s => {
+    (s.receipts || []).forEach(r => {
+      if (r.generatedAt) {
+        const [year, month] = r.generatedAt.split('-');
+        monthSet.add(`${year}-${month}`);
+      }
+    });
+  });
+  
+  // Get current year-month and calculate 12 months back
+  const now = new Date();
+  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  
+  const last12Months = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    last12Months.push(ym);
+  }
+  
+  // Filter to only include months that exist in receipts AND are in last 12 months
+  const availableMonths = Array.from(monthSet)
+    .filter(ym => last12Months.includes(ym))
+    .sort()
+    .reverse(); // Most recent first
+  
+  const monthFilter = document.getElementById('receipt-filter-month');
+  if (monthFilter) {
+    const currentValue = monthFilter.value;
+    
+    monthFilter.innerHTML = '<option value="">Todos los meses</option>' +
+      availableMonths.map(ym => {
+        const [year, month] = ym.split('-');
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const monthName = monthNames[parseInt(month) - 1];
+        return `<option value="${ym}">${monthName} ${year}</option>`;
+      }).join('');
+    
+    // Restore previous selection if it still exists
+    if (currentValue && availableMonths.includes(currentValue)) {
+      monthFilter.value = currentValue;
+    }
+  }
+  
   window.App.applyReceiptFilters();
 }
 
 window.App.applyReceiptFilters = function() {
   const statusFilter = document.getElementById('receipt-filter-status')?.value || '';
+  const monthFilter = document.getElementById('receipt-filter-month')?.value || '';
+  const today = window.App.todayStr();
   
-  // Get all students with receipts
+  // Get all students with receipts OR unbilled classes
   const studentsWithReceipts = window.App.state.students
     .map(s => {
-      let receipts = (s.receipts || []).slice();
+      const allReceipts = (s.receipts || []).slice();
+      
+      // Check if student has unbilled past classes (use ALL receipts, not filtered)
+      const billedClassIds = new Set();
+      allReceipts.forEach(r => {
+        if (r.status === 'paid' && r.classIds) {
+          r.classIds.forEach(id => billedClassIds.add(id));
+        }
+      });
+      
+      const unbilledClasses = window.App.state.classes
+        .filter(c => c.date <= today && c.studentIds.includes(s.id) && !billedClassIds.has(c.id));
+      
+      const hasUnbilledClasses = unbilledClasses.length > 0;
+      
+      // Now filter receipts for display
+      let receipts = allReceipts.slice();
+      
+      // Apply month filter first
+      if (monthFilter) {
+        receipts = receipts.filter(r => {
+          if (!r.generatedAt) return false;
+          const receiptMonth = r.generatedAt.substring(0, 7); // Get YYYY-MM
+          return receiptMonth === monthFilter;
+        });
+      }
+      
+      // Apply status filter
       if (statusFilter) {
         receipts = receipts.filter(r => r.status === statusFilter);
       }
-      return { student: s, receipts };
+      
+      return { student: s, receipts, hasUnbilledClasses: monthFilter ? false : hasUnbilledClasses };
     })
-    .filter(item => item.receipts.length > 0);
+    .filter(item => item.receipts.length > 0 || item.hasUnbilledClasses);
   
   const list = document.getElementById('receipts-panel-list');
   
@@ -259,11 +401,13 @@ window.App.applyReceiptFilters = function() {
         <div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--gray-200)">
           <h4 style="margin:0;font-size:0.95rem;font-weight:700;color:var(--gray-800)">${window.App.escHtml(s.name)}</h4>
           <div style="font-size:0.75rem;color:var(--gray-500);margin-top:2px">
-            ${receipts.length} recibo${receipts.length !== 1 ? 's' : ''}
+            ${receipts.length > 0 ? `${receipts.length} recibo${receipts.length !== 1 ? 's' : ''}` : ''}
+            ${receipts.length > 0 && item.hasUnbilledClasses ? ' · ' : ''}
+            ${item.hasUnbilledClasses ? '<span style="color:var(--warning)">⚠ Clases sin cobrar</span>' : ''}
             ${s.phone ? ` · ${s.phone}` : ''}
           </div>
         </div>
-        ${receipts.map(r => `
+        ${receipts.length > 0 ? receipts.map(r => `
           <div class="receipt-item ${r.status}" style="margin-bottom:10px">
             <div class="receipt-item-header">
               <span class="receipt-number">Nº ${window.App.escHtml(r.number)}</span>
@@ -291,7 +435,18 @@ window.App.applyReceiptFilters = function() {
               </button>
             </div>
           </div>
-        `).join('')}
+        `).join('') : ''}
+        ${item.hasUnbilledClasses ? `
+          <div style="padding:12px;background:var(--warning-bg);border-radius:8px;margin-top:${receipts.length > 0 ? '10px' : '0'}">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="font-size:0.85rem;font-weight:600;color:var(--warning)">Clases pendientes de cobrar</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px">Genera un recibo para cobrarlas</div>
+              </div>
+              <button class="btn btn-sm btn-primary" onclick="window.App.generateReceipt('${s.id}')">Generar recibo</button>
+            </div>
+          </div>
+        ` : ''}
       </div>
     `;
   }).join('');
@@ -396,6 +551,11 @@ window.App.initReceiptEvents = function() {
   const filterStatus = document.getElementById('receipt-filter-status');
   if (filterStatus) {
     filterStatus.addEventListener('change', window.App.applyReceiptFilters);
+  }
+  
+  const filterMonth = document.getElementById('receipt-filter-month');
+  if (filterMonth) {
+    filterMonth.addEventListener('change', window.App.applyReceiptFilters);
   }
   
   const btnSend = document.getElementById('btn-send-pending-receipts');

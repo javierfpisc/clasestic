@@ -17,10 +17,10 @@ window.App.calculateStudentBalance = function(studentId) {
   // Sum fees from past classes (date <= today)
   const classesTotal = pastClasses.reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
   
-  // Sum amounts from sent and paid receipts (already billed)
+  // Sum amounts from paid receipts only (sent receipts are still debt)
   const studentReceipts = s.receipts || [];
   const receiptsTotal = studentReceipts
-    .filter(r => r.status === 'sent' || r.status === 'paid')
+    .filter(r => r.status === 'paid')
     .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
   
   // Debug logging (remove after verification)
