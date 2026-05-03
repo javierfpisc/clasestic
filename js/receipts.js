@@ -23,7 +23,72 @@ window.App.generateReceipt = function(studentId) {
   }
 }
 
-function doGenerateReceipt(s) {
+// Generate receipts for all students with unbilled classes
+window.App.generateAllReceipts = function() {
+  const today = window.App.todayStr();
+  
+  // Find students with unbilled classes
+  const studentsWithUnbilled = window.App.state.students.filter(s => {
+    const billedClassIds = new Set();
+    
+    // Get all billed class IDs from ANY receipt
+    (s.receipts || []).forEach(r => {
+      if (r.classIds) {
+        r.classIds.forEach(id => billedClassIds.add(id));
+      }
+    });
+    
+    // Check if student has past unbilled classes
+    const unbilledClasses = window.App.state.classes.filter(c => 
+      c.date <= today && 
+      c.studentIds.includes(s.id) && 
+      !billedClassIds.has(c.id)
+    );
+    
+    return unbilledClasses.length > 0;
+  });
+  
+  if (studentsWithUnbilled.length === 0) {
+    window.App.showToast('No hay clases pendientes de facturar', 'info');
+    return;
+  }
+  
+  window.App.confirmAction(
+    'Generar recibos automáticamente',
+    `Se generarán recibos para ${studentsWithUnbilled.length} alumno(s) con clases pendientes de facturar. ¿Continuar?`,
+    () => processGenerateAllReceipts(studentsWithUnbilled)
+  );
+}
+
+function processGenerateAllReceipts(students) {
+  let generated = 0;
+  let skipped = 0;
+  
+  students.forEach(s => {
+    const hasPending = (s.receipts || []).some(r => r.status === 'pending');
+    if (hasPending) {
+      skipped++;
+      return;
+    }
+    
+    // Generate receipt for this student
+    const result = doGenerateReceipt(s, true); // true = silent mode
+    if (result) generated++;
+  });
+  
+  window.App.saveState();
+  window.App.renderCurrentTab();
+  
+  if (generated > 0 && skipped === 0) {
+    window.App.showToast(`✓ ${generated} recibo(s) generado(s) automáticamente`, 'success');
+  } else if (generated > 0) {
+    window.App.showToast(`${generated} generado(s), ${skipped} omitido(s) (ya tenían recibos pendientes)`, 'info');
+  } else {
+    window.App.showToast('No se generó ningún recibo (todos tenían recibos pendientes)', 'info');
+  }
+}
+
+function doGenerateReceipt(s, silent = false) {
   window.App.state.receiptCounter = (window.App.state.receiptCounter || 0) + 1;
   const now   = new Date();
   const year  = now.getFullYear();
@@ -46,6 +111,13 @@ function doGenerateReceipt(s) {
     .filter(c => c.date <= today && c.studentIds.includes(s.id) && !billedClassIds.has(c.id))
     .map(c => c.id);
   
+  if (classesToBill.length === 0) {
+    if (!silent) {
+      window.App.showToast('No hay clases pendientes de facturar para este alumno', 'info');
+    }
+    return false;
+  }
+  
   const amount = classesToBill.reduce((sum, classId) => {
     const c = window.App.state.classes.find(cl => cl.id === classId);
     return sum + (parseFloat(c.fee) || 0);
@@ -63,10 +135,15 @@ function doGenerateReceipt(s) {
   };
   if (!s.receipts) s.receipts = [];
   s.receipts.push(receipt);
-  window.App.saveState();
-  window.App.renderCurrentTab();
-  window.App.showToast(`Recibo ${receipt.number} generado · ${window.App.fmtCurrency(amount)}`, 'success');
-  window.App.openStudentReceipts(s.id);
+  
+  if (!silent) {
+    window.App.saveState();
+    window.App.renderCurrentTab();
+    window.App.showToast(`Recibo ${receipt.number} generado · ${window.App.fmtCurrency(amount)}`, 'success');
+    window.App.openStudentReceipts(s.id);
+  }
+  
+  return true;
 }
 
 window.App.openStudentReceipts = function(studentId) {
@@ -723,6 +800,11 @@ function sleep(ms) {
 
 // Initialize receipt events
 window.App.initReceiptEvents = function() {
+  const btnGenerateAll = document.getElementById('btn-generate-all-receipts');
+  if (btnGenerateAll) {
+    btnGenerateAll.addEventListener('click', window.App.generateAllReceipts);
+  }
+  
   const filterStatus = document.getElementById('receipt-filter-status');
   if (filterStatus) {
     filterStatus.addEventListener('change', window.App.applyReceiptFilters);
