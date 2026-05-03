@@ -184,9 +184,8 @@ window.App.githubPull = async function() {
     
     // If decryption failed, file is corrupted or wrong key
     if (!remote) {
-      console.warn('[GitHub] Cannot decrypt remote file - will overwrite with local data');
-      window.App.setGithubStatusUI('pending');
-      setTimeout(() => window.App.githubPush(), 1000);
+      console.warn('[GitHub] Cannot decrypt remote file - ignoring remote, will use local data');
+      window.App.setGithubStatusUI('ok');
       return false;
     }
     
@@ -275,15 +274,6 @@ window.App.githubPush = async function(retry) {
   window.App.setGithubSyncing(true);
   window.App.setGithubStatusUI('syncing');
 
-  // Pull first to check if remote has newer data
-  if (!retry) {
-    const pulled = await window.App.githubPull();
-    if (!pulled) {
-      window.App.setGithubSyncing(false);
-      return;
-    }
-  }
-
   const content = await stateToEncryptedBase64(cfg.token);
   const body = {
     files: {
@@ -304,7 +294,7 @@ window.App.githubPush = async function(retry) {
     if (res.status === 401 || res.status === 403) {
       window.App.setGithubSyncing(false);
       window.App.setGithubStatusUI('error');
-      window.App.showToast(window.App.MESSAGES.errorGithubAccess, 'error');
+      window.App.showToast('Token sin permisos. Necesita scope "gist"', 'error');
       return;
     }
     if (!res.ok) {
@@ -325,16 +315,7 @@ window.App.githubPush = async function(retry) {
     window.App.setGithubSyncing(false);
     window.App.setGithubStatusUI('error');
     console.error('GitHub push network error:', e);
-    
-    // Retry once after a delay if it's a network error
-    if (!retry) {
-      setTimeout(async () => {
-        console.log('[GitHub] Retrying push after network error...');
-        await window.App.githubPush(true);
-      }, 3000);
-    } else {
-      window.App.showToast('Error de conexión con GitHub', 'error');
-    }
+    window.App.showToast('Error de conexión con GitHub', 'error');
   }
 };
 
