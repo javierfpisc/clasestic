@@ -519,31 +519,105 @@ window.App.sendPendingReceipts = async function() {
     return;
   }
   
+  const totalReceipts = studentsPending.reduce((sum, item) => sum + item.receipts.length, 0);
+  
   window.App.confirmAction(
     'Enviar recibos por WhatsApp',
-    `Se enviarán ${studentsPending.reduce((sum, item) => sum + item.receipts.length, 0)} recibos a ${studentsPending.length} alumno${studentsPending.length !== 1 ? 's' : ''} por WhatsApp. ¿Continuar?`,
-    () => {
-      let sent = 0;
-      studentsPending.forEach(item => {
-        item.receipts.forEach(r => {
-          const academyName = window.App.state.settings?.academyName || 'Academia';
-          const message = `Hola ${item.student.name.split(' ')[0]},\n\nTienes un recibo pendiente de ${academyName}:\n\nRecibo Nº: ${r.number}\nImporte: ${window.App.fmtCurrency(r.amount)}\nFecha: ${window.App.fmtDate(r.generatedAt)}\n\nPuedes realizar el pago y solicitar tu recibo. ¡Gracias!`;
-          
-          const url = `https://wa.me/${item.student.phone}?text=${encodeURIComponent(message)}`;
-          window.open(url, '_blank');
-          
-          // Mark as sent (balance is calculated dynamically)
-          r.status = 'sent';
-          r.sentAt = window.App.todayStr();
-          sent++;
-        });
-      });
-      
-      window.App.saveState();
-      window.App.renderCurrentTab();
-      window.App.showToast(`${sent} recibo${sent !== 1 ? 's' : ''} enviados por WhatsApp`, 'success');
-    }
+    `Se procesarán ${totalReceipts} recibo(s) de ${studentsPending.length} alumno(s). El PDF se descargará automáticamente y deberás adjuntarlo manualmente en WhatsApp. ¿Continuar?`,
+    () => processPendingReceiptsWhatsApp(studentsPending)
   );
+};
+
+async function processPendingReceiptsWhatsApp(studentsPending) {
+  let sent = 0;
+  let failed = 0;
+  
+  for (const item of studentsPending) {
+    const student = item.student;
+    const phone = student.phone?.trim().replace(/\D/g, ''); // Clean phone number
+    
+    for (const receipt of item.receipts) {
+      try {
+        // Generate and download PDF
+        await window.App.downloadReceiptPdf(student, receipt);
+        
+        // Wait for PDF to start downloading
+        await sleep(800);
+        
+        // Build WhatsApp message
+        const academyName = window.App.state.settings?.academyName || 'Academia';
+        const firstName = student.name.split(' ')[0];
+        const message = `Hola ${firstName},\n\nTe envío el recibo ${receipt.number} por importe de ${window.App.fmtCurrency(receipt.amount)}.\n\nPor favor, adjunta el PDF descargado.\n\nGracias,\n${academyName}`;
+        
+        // Open WhatsApp
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+        
+        // Ask for confirmation
+        const wasSent = await confirmWhatsAppSent(student.name, receipt.number);
+        
+        if (wasSent) {
+          receipt.status = 'sent';
+          receipt.sentAt = window.App.todayStr();
+          sent++;
+        } else {
+          failed++;
+        }
+        
+        // Wait between receipts
+        await sleep(1500);
+        
+      } catch (e) {
+        console.error(`Error sending receipt ${receipt.number}:`, e);
+        failed++;
+      }
+    }
+  }
+  
+  window.App.saveState();
+  window.App.renderCurrentTab();
+  
+  if (sent > 0 && failed === 0) {
+    window.App.showToast(`✓ ${sent} recibo(s) enviado(s) por WhatsApp`, 'success');
+  } else if (sent > 0) {
+    window.App.showToast(`${sent} enviado(s), ${failed} cancelado(s)`, 'info');
+  } else {
+    window.App.showToast('No se envió ningún recibo', 'info');
+  }
+}
+
+function confirmWhatsAppSent(studentName, receiptNumber) {
+  return new Promise((resolve) => {
+    const modalHtml = `
+      <div class="modal-overlay" id="whatsapp-confirm-modal">
+        <div class="modal-content" style="max-width:450px">
+          <h3>Confirmación de envío</h3>
+          <p>¿Enviaste correctamente el recibo <strong>${receiptNumber}</strong> a <strong>${studentName}</strong> por WhatsApp con el PDF adjunto?</p>
+          <div class="modal-actions">
+            <button id="wa-confirm-no" class="btn btn-secondary">No / Cancelar</button>
+            <button id="wa-confirm-yes" class="btn btn-primary">Sí, enviado</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = document.getElementById('whatsapp-confirm-modal');
+    
+    document.getElementById('wa-confirm-yes').onclick = () => {
+      modal.remove();
+      resolve(true);
+    };
+    
+    document.getElementById('wa-confirm-no').onclick = () => {
+      modal.remove();
+      resolve(false);
+    };
+  });
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // Initialize receipt events
