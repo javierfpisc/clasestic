@@ -53,9 +53,7 @@ window.App.loadState = function() {
       gcalClientId: '', 
       gcalCalendarId: 'primary',
       githubToken: '',
-      githubRepo: '',
-      githubBranch: 'main',
-      githubFilePath: 'academia_data.json'
+      githubGistUrl: ''
     };
   }
   if (!window.App.state.settings.academyName)    window.App.state.settings.academyName    = window.App.CONFIG.defaultAcademyName;
@@ -63,9 +61,7 @@ window.App.loadState = function() {
   if (window.App.state.settings.defaultGroupFee === undefined) window.App.state.settings.defaultGroupFee = 10;
   if (!window.App.state.settings.gcalCalendarId) window.App.state.settings.gcalCalendarId = 'primary';
   if (!window.App.state.settings.githubToken)    window.App.state.settings.githubToken    = '';
-  if (!window.App.state.settings.githubRepo)     window.App.state.settings.githubRepo     = '';
-  if (!window.App.state.settings.githubBranch)   window.App.state.settings.githubBranch   = 'main';
-  if (!window.App.state.settings.githubFilePath) window.App.state.settings.githubFilePath = 'academia_data.json';
+  if (!window.App.state.settings.githubGistUrl)  window.App.state.settings.githubGistUrl  = '';
   if (!Array.isArray(window.App.state.groups))   window.App.state.groups = [];
   if (!window.App.state.receiptCounter) window.App.state.receiptCounter = 0;
   if (!window.App.state.lastModified)   window.App.state.lastModified   = null;

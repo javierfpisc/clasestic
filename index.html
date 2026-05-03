@@ -422,26 +422,16 @@
       <div class="settings-section">
         <h4 class="settings-section-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:-3px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          Sincronización GitHub
+          Sincronización GitHub Gist
         </h4>
-        <p class="settings-hint">El JSON se guarda automáticamente en tu repositorio de GitHub. Crea un <strong>Personal Access Token</strong> (clásico) con scope <code>repo</code> en <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">github.com/settings/tokens</a>. El token se almacena solo en este dispositivo.</p>
+        <p class="settings-hint">Los datos se sincronizan mediante un GitHub Gist cifrado. Crea un <strong>Personal Access Token</strong> (clásico) con scope <code>gist</code> en <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">github.com/settings/tokens</a>. El token se almacena solo en este dispositivo.</p>
         <div class="form-group">
           <label for="settings-gh-token">Personal Access Token</label>
           <input type="password" id="settings-gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
         </div>
         <div class="form-group">
-          <label for="settings-gh-repo">Repositorio (usuario/nombre)</label>
-          <input type="text" id="settings-gh-repo" placeholder="usuario/mi-academia-datos" autocomplete="off" />
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-          <div class="form-group" style="margin-bottom:0">
-            <label for="settings-gh-branch">Rama</label>
-            <input type="text" id="settings-gh-branch" placeholder="main" />
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label for="settings-gh-path">Ruta del archivo</label>
-            <input type="text" id="settings-gh-path" placeholder="academia_data.json" />
-          </div>
+          <label for="settings-gh-gist-url">URL del Gist</label>
+          <input type="text" id="settings-gh-gist-url" placeholder="https://gist.github.com/usuario/xxxxx" autocomplete="off" />
         </div>
         <div class="gcal-connect-row">
           <div class="gcal-connect-status">

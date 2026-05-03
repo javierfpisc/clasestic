@@ -6,13 +6,16 @@
 window.App = window.App || {};
 
 window.App.getGithubConfig = function() {
-  const s        = window.App.state.settings;
-  const token    = s?.githubToken?.trim();
-  const repo     = s?.githubRepo?.trim();
-  const branch   = s?.githubBranch?.trim()   || 'main';
-  const filePath = s?.githubFilePath?.trim() || 'academia_data.json';
-  if (!token || !repo) return null;
-  return { token, repo, branch, filePath };
+  const s = window.App.state.settings;
+  const token = s?.githubToken?.trim();
+  const gistUrl = s?.githubGistUrl?.trim();
+  if (!token || !gistUrl) return null;
+  
+  // Extract gist ID from URL
+  const match = gistUrl.match(/gist\.github\.com\/[^\/]+\/([a-f0-9]+)/);
+  if (!match) return null;
+  
+  return { token, gistId: match[1], gistUrl };
 };
 
 function githubApiHeaders(token) {
@@ -139,25 +142,21 @@ window.App.setGithubStatusUI = function(status) {
   if (settingsLabel) settingsLabel.textContent = labels[status] || status;
 };
 
-// Pull remote state from GitHub and reconcile with local
+// Pull remote state from GitHub Gist and reconcile with local
 window.App.githubPull = async function() {
   const cfg = window.App.getGithubConfig();
   if (!cfg) return false;
 
   window.App.setGithubStatusUI('syncing');
   try {
-    const filePath = cfg.filePath.split('/').map(encodeURIComponent).join('/');
-    const url = `https://api.github.com/repos/${cfg.repo}/contents/${filePath}?ref=${encodeURIComponent(cfg.branch)}`;
+    const url = `https://api.github.com/gists/${cfg.gistId}`;
     const res = await fetch(url, { headers: githubApiHeaders(cfg.token) });
 
     if (res.status === 404) {
-      // File not yet in repo — upload local state as first version
-      window.App.setGithubFileSha(null);
-      console.log('[GitHub] File not found in repo, creating encrypted file...');
-      window.App.setGithubStatusUI('ok');
-      // Trigger push to create the file
-      setTimeout(() => window.App.githubPush(), 500);
-      return true;
+      // Gist not found
+      window.App.setGithubStatusUI('error');
+      window.App.showToast('Gist no encontrado', 'error');
+      return false;
     }
     if (res.status === 401 || res.status === 403) {
       window.App.setGithubStatusUI('error');
@@ -170,14 +169,22 @@ window.App.githubPull = async function() {
       return false;
     }
 
-    const data = await res.json();
-    window.App.setGithubFileSha(data.sha);
-    const remote = await encryptedBase64ToObj(data.content, cfg.token);
+    const gist = await res.json();
+    const file = gist.files['clasestic.json'];
     
-    // If decryption failed (remote is null), file is corrupted or wrong key
+    if (!file || !file.content) {
+      // File doesn't exist in gist yet
+      console.log('[GitHub] clasestic.json not in gist, will create on next push');
+      window.App.setGithubStatusUI('ok');
+      setTimeout(() => window.App.githubPush(), 500);
+      return true;
+    }
+    
+    const remote = await encryptedBase64ToObj(file.content, cfg.token);
+    
+    // If decryption failed, file is corrupted or wrong key
     if (!remote) {
-      console.warn('[GitHub] Cannot decrypt remote file - resetting SHA to force overwrite');
-      window.App.setGithubFileSha(null);
+      console.warn('[GitHub] Cannot decrypt remote file - will overwrite with local data');
       window.App.setGithubStatusUI('pending');
       setTimeout(() => window.App.githubPush(), 1000);
       return false;
@@ -188,7 +195,6 @@ window.App.githubPull = async function() {
   } catch (e) {
     console.error('GitHub pull error:', e);
     window.App.setGithubStatusUI('error');
-    // Don't show toast for periodic background pulls
     return false;
   }
 };
@@ -261,7 +267,7 @@ window.App.scheduleGithubPush = function() {
   window.App.setGithubSyncTimer(setTimeout(window.App.githubPush, 2000));
 };
 
-// Push current state to GitHub
+// Push current state to GitHub Gist
 window.App.githubPush = async function(retry) {
   const cfg = window.App.getGithubConfig();
   if (!cfg || window.App.githubSyncing) return;
@@ -269,8 +275,8 @@ window.App.githubPush = async function(retry) {
   window.App.setGithubSyncing(true);
   window.App.setGithubStatusUI('syncing');
 
-  // If we don't have the SHA, get it first
-  if (!window.App.githubFileSha && !retry) {
+  // Pull first to check if remote has newer data
+  if (!retry) {
     const pulled = await window.App.githubPull();
     if (!pulled) {
       window.App.setGithubSyncing(false);
@@ -279,29 +285,22 @@ window.App.githubPush = async function(retry) {
   }
 
   const content = await stateToEncryptedBase64(cfg.token);
-  const body    = {
-    message: `sync ${new Date().toLocaleString('es')}`,
-    content,
+  const body = {
+    files: {
+      'clasestic.json': {
+        content: content
+      }
+    }
   };
-  if (window.App.githubFileSha) body.sha = window.App.githubFileSha;
 
   try {
-    const filePath = cfg.filePath.split('/').map(encodeURIComponent).join('/');
-    const url = `https://api.github.com/repos/${cfg.repo}/contents/${filePath}`;
+    const url = `https://api.github.com/gists/${cfg.gistId}`;
     const res = await fetch(url, {
-      method:  'PUT',
+      method: 'PATCH',
       headers: githubApiHeaders(cfg.token),
-      body:    JSON.stringify(body),
+      body: JSON.stringify(body),
     });
 
-    if (res.status === 409 && !retry) {
-      // SHA mismatch: try without SHA to force overwrite corrupted file
-      console.warn('[GitHub] 409 conflict - trying force overwrite without SHA');
-      window.App.setGithubFileSha(null);
-      window.App.setGithubSyncing(false);
-      await window.App.githubPush(true);
-      return;
-    }
     if (res.status === 401 || res.status === 403) {
       window.App.setGithubSyncing(false);
       window.App.setGithubStatusUI('error');
@@ -318,8 +317,7 @@ window.App.githubPush = async function(retry) {
       return;
     }
 
-    const data = await res.json();
-    window.App.setGithubFileSha(data.content?.sha || window.App.githubFileSha);
+    await res.json();
     window.App.setGithubSyncing(false);
     window.App.setGithubLastSync(new Date());
     window.App.setGithubStatusUI('ok');
@@ -352,32 +350,40 @@ window.App.manualGithubSync = async function() {
 
 // Connection test triggered from settings modal
 window.App.testGithubConnection = async function() {
-  const token    = document.getElementById('settings-gh-token').value.trim();
-  const repo     = document.getElementById('settings-gh-repo').value.trim();
-  const branch   = document.getElementById('settings-gh-branch').value.trim() || 'main';
-  const filePath = (document.getElementById('settings-gh-path').value.trim() || 'academia_data.json')
-    .split('/').map(encodeURIComponent).join('/');
+  const token = document.getElementById('settings-gh-token').value.trim();
+  const gistUrl = document.getElementById('settings-gh-gist-url').value.trim();
 
-  if (!token || !repo) {
-    window.App.showToast('Introduce token y repositorio', 'error');
+  if (!token || !gistUrl) {
+    window.App.showToast('Introduce token y URL del Gist', 'error');
     return;
   }
 
+  const match = gistUrl.match(/gist\.github\.com\/[^\/]+\/([a-f0-9]+)/);
+  if (!match) {
+    window.App.showToast('URL del Gist no válida', 'error');
+    return;
+  }
+
+  const gistId = match[1];
   const settingsLabel = document.getElementById('settings-github-label');
-  const settingsDot   = document.getElementById('settings-github-dot');
+  const settingsDot = document.getElementById('settings-github-dot');
   if (settingsLabel) settingsLabel.textContent = window.App.MESSAGES.checking;
 
   try {
-    const url = `https://api.github.com/repos/${repo}/contents/${filePath}?ref=${encodeURIComponent(branch)}`;
+    const url = `https://api.github.com/gists/${gistId}`;
     const res = await fetch(url, { headers: githubApiHeaders(token) });
-    if (res.status === 200 || res.status === 404) {
-      if (settingsLabel) settingsLabel.textContent = res.status === 200 ? 'Conexión OK ✓' : window.App.MESSAGES.githubRepoFound;
-      if (settingsDot)   settingsDot.className = 'gcal-dot connected';
+    if (res.status === 200) {
+      if (settingsLabel) settingsLabel.textContent = 'Conexión OK ✓';
+      if (settingsDot) settingsDot.className = 'gcal-dot connected';
       window.App.showToast(window.App.MESSAGES.githubConnectionOk, 'success');
     } else if (res.status === 401 || res.status === 403) {
       if (settingsLabel) settingsLabel.textContent = 'Acceso denegado';
-      if (settingsDot)   settingsDot.className = 'gcal-dot disconnected';
+      if (settingsDot) settingsDot.className = 'gcal-dot disconnected';
       window.App.showToast(window.App.MESSAGES.errorGithubToken, 'error');
+    } else if (res.status === 404) {
+      if (settingsLabel) settingsLabel.textContent = 'Gist no encontrado';
+      if (settingsDot) settingsDot.className = 'gcal-dot disconnected';
+      window.App.showToast('Gist no encontrado', 'error');
     } else {
       if (settingsLabel) settingsLabel.textContent = `Error ${res.status}`;
       window.App.showToast(`GitHub error ${res.status}`, 'error');

@@ -12,10 +12,8 @@ function openSettingsModal() {
   document.getElementById('settings-default-group-fee').value = window.App.state.settings?.defaultGroupFee ?? 10;
   document.getElementById('settings-gcal-client-id').value    = window.App.state.settings?.gcalClientId   || '';
   document.getElementById('settings-gcal-calendar-id').value  = window.App.state.settings?.gcalCalendarId || 'primary';
-  document.getElementById('settings-gh-token').value  = window.App.state.settings?.githubToken    || '';
-  document.getElementById('settings-gh-repo').value   = window.App.state.settings?.githubRepo     || '';
-  document.getElementById('settings-gh-branch').value = window.App.state.settings?.githubBranch   || 'main';
-  document.getElementById('settings-gh-path').value   = window.App.state.settings?.githubFilePath || 'academia_data.json';
+  document.getElementById('settings-gh-token').value    = window.App.state.settings?.githubToken   || '';
+  document.getElementById('settings-gh-gist-url').value = window.App.state.settings?.githubGistUrl || '';
   document.getElementById('settings-whatsapp-phone').value = window.App.state.settings?.whatsappPhone || '';
   window.App.updateGCalUI();
   window.App.setGithubStatus(window.App.githubStatus);
@@ -28,10 +26,8 @@ function saveSettings() {
   const defaultGroupFee = parseFloat(document.getElementById('settings-default-group-fee').value) || 10;
   const gcalClientId   = document.getElementById('settings-gcal-client-id').value.trim();
   const gcalCalendarId = document.getElementById('settings-gcal-calendar-id').value.trim() || 'primary';
-  const githubToken    = document.getElementById('settings-gh-token').value.trim();
-  const githubRepo     = document.getElementById('settings-gh-repo').value.trim();
-  const githubBranch   = document.getElementById('settings-gh-branch').value.trim()  || 'main';
-  const githubFilePath = document.getElementById('settings-gh-path').value.trim()    || 'academia_data.json';
+  const githubToken   = document.getElementById('settings-gh-token').value.trim();
+  const githubGistUrl = document.getElementById('settings-gh-gist-url').value.trim();
   const whatsappPhone  = document.getElementById('settings-whatsapp-phone').value.trim();
   
   window.App.state.settings = {
@@ -39,12 +35,10 @@ function saveSettings() {
     defaultIndividualFee,
     defaultGroupFee,
     gcalClientId, gcalCalendarId,
-    githubToken, githubRepo, githubBranch, githubFilePath,
+    githubToken, githubGistUrl,
     whatsappPhone,
   };
   
-  // Reset SHA so next push re-fetches it if repo changed
-  window.App.setGithubFileSha(null);
   window.App.saveState();
   window.App.closeModal('modal-settings');
   window.App.showToast('Ajustes guardados', 'success');

@@ -16,9 +16,7 @@ window.App.state = {
     gcalClientId: '',
     gcalCalendarId: 'primary',
     githubToken: '',
-    githubRepo: '',
-    githubBranch: 'main',
-    githubFilePath: 'academia_data.json',
+    githubGistUrl: '',
   },
   receiptCounter: 0,
   lastModified: null,
@@ -34,7 +32,6 @@ window.App.gcalTokenClient = null;
 window.App.gcalAccessToken = null;
 
 // GitHub state
-window.App.githubFileSha = null;
 window.App.githubSyncTimer = null;
 window.App.githubPullTimer = null;
 window.App.githubSyncing = false;
@@ -63,10 +60,6 @@ window.App.setGcalTokenClient = function(client) {
 
 window.App.setGcalAccessToken = function(token) {
   window.App.gcalAccessToken = token;
-};
-
-window.App.setGithubFileSha = function(sha) {
-  window.App.githubFileSha = sha;
 };
 
 window.App.setGithubSyncTimer = function(timer) {
