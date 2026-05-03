@@ -34,9 +34,9 @@ function doGenerateReceipt(s) {
   const today = window.App.todayStr();
   const billedClassIds = new Set();
   
-  // Get all class IDs already in paid receipts only
+  // Get all class IDs already in ANY receipt (pending, sent, or paid)
   (s.receipts || []).forEach(r => {
-    if (r.status === 'paid' && r.classIds) {
+    if (r.classIds) {
       r.classIds.forEach(id => billedClassIds.add(id));
     }
   });
@@ -343,7 +343,7 @@ window.App.applyReceiptFilters = function() {
       // Check if student has unbilled past classes (use ALL receipts, not filtered)
       const billedClassIds = new Set();
       allReceipts.forEach(r => {
-        if (r.status === 'paid' && r.classIds) {
+        if (r.classIds) {
           r.classIds.forEach(id => billedClassIds.add(id));
         }
       });

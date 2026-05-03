@@ -78,9 +78,9 @@ window.App.buildDebtorCard = function(s) {
   const today = window.App.todayStr();
   const billedClassIds = new Set();
   
-  // Get all class IDs in paid receipts only
+  // Get all class IDs in ANY receipt (pending, sent, or paid)
   (s.receipts || []).forEach(r => {
-    if (r.status === 'paid' && r.classIds) {
+    if (r.classIds) {
       r.classIds.forEach(id => billedClassIds.add(id));
     }
   });
