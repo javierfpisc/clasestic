@@ -444,13 +444,20 @@
       <div class="settings-section">
         <h4 class="settings-section-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;vertical-align:-3px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          WhatsApp
+          WhatsApp Business API
         </h4>
-        <p class="settings-hint">Configura tu número de WhatsApp Business para enviar recibos automáticamente. Formato internacional: <code>34600123456</code></p>
+        <p class="settings-hint">Configura WhatsApp Business Cloud API para envío automático de recibos con PDF adjunto. Obtén tus credenciales en <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer">Meta for Developers</a>.</p>
         <div class="form-group">
-          <label for="settings-whatsapp-phone">Número WhatsApp Business</label>
-          <input type="text" id="settings-whatsapp-phone" placeholder="34600123456" autocomplete="off" />
-          <p class="form-hint">Solo números, sin + ni espacios</p>
+          <label for="settings-whatsapp-phone-id">Phone Number ID</label>
+          <input type="text" id="settings-whatsapp-phone-id" placeholder="123456789012345" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="settings-whatsapp-token">API Access Token</label>
+          <input type="password" id="settings-whatsapp-token" placeholder="EAAxxxxxxxxxx..." autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="settings-whatsapp-business-id">WhatsApp Business Account ID</label>
+          <input type="text" id="settings-whatsapp-business-id" placeholder="123456789012345" autocomplete="off" />
         </div>
       </div>
       <div class="form-actions">

@@ -14,7 +14,9 @@ function openSettingsModal() {
   document.getElementById('settings-gcal-calendar-id').value  = window.App.state.settings?.gcalCalendarId || 'primary';
   document.getElementById('settings-gh-token').value    = window.App.state.settings?.githubToken   || '';
   document.getElementById('settings-gh-gist-url').value = window.App.state.settings?.githubGistUrl || '';
-  document.getElementById('settings-whatsapp-phone').value = window.App.state.settings?.whatsappPhone || '';
+  document.getElementById('settings-whatsapp-phone-id').value = window.App.state.settings?.whatsappPhoneId || '';
+  document.getElementById('settings-whatsapp-token').value = window.App.state.settings?.whatsappToken || '';
+  document.getElementById('settings-whatsapp-business-id').value = window.App.state.settings?.whatsappBusinessId || '';
   window.App.updateGCalUI();
   window.App.setGithubStatus(window.App.githubStatus);
   window.App.openModal('modal-settings');
@@ -28,7 +30,9 @@ function saveSettings() {
   const gcalCalendarId = document.getElementById('settings-gcal-calendar-id').value.trim() || 'primary';
   const githubToken   = document.getElementById('settings-gh-token').value.trim();
   const githubGistUrl = document.getElementById('settings-gh-gist-url').value.trim();
-  const whatsappPhone  = document.getElementById('settings-whatsapp-phone').value.trim();
+  const whatsappPhoneId  = document.getElementById('settings-whatsapp-phone-id').value.trim();
+  const whatsappToken  = document.getElementById('settings-whatsapp-token').value.trim();
+  const whatsappBusinessId  = document.getElementById('settings-whatsapp-business-id').value.trim();
   
   window.App.state.settings = {
     academyName: academyName || 'Mi Academia',
@@ -36,7 +40,7 @@ function saveSettings() {
     defaultGroupFee,
     gcalClientId, gcalCalendarId,
     githubToken, githubGistUrl,
-    whatsappPhone,
+    whatsappPhoneId, whatsappToken, whatsappBusinessId,
   };
   
   window.App.saveState();

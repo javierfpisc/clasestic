@@ -498,11 +498,143 @@ window.App.markReceiptAsPaid = function(studentId, receiptId) {
   window.App.showToast(`Recibo ${r.number} marcado como pagado`, 'success');
 }
 
-// Send pending receipts via WhatsApp
+// Generate receipt PDF as blob (for WhatsApp API upload)
+async function generateReceiptPdfBlob(student, receipt) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  // Header
+  const academyName = window.App.state.settings?.academyName || 'Academia';
+  doc.setFontSize(20);
+  doc.text(academyName, 105, 20, { align: 'center' });
+  
+  doc.setFontSize(14);
+  doc.text('RECIBO', 105, 30, { align: 'center' });
+  
+  // Receipt details
+  doc.setFontSize(11);
+  let y = 45;
+  doc.text(`Número: ${receipt.number}`, 20, y);
+  y += 8;
+  doc.text(`Fecha: ${window.App.fmtDate(receipt.generatedAt)}`, 20, y);
+  y += 8;
+  doc.text(`Alumno: ${student.name}`, 20, y);
+  y += 15;
+  
+  // Classes table
+  doc.setFontSize(12);
+  doc.text('Detalle de clases:', 20, y);
+  y += 10;
+  
+  // Table headers
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'bold');
+  doc.text('Fecha', 20, y);
+  doc.text('Tipo', 60, y);
+  doc.text('Importe', 150, y);
+  y += 7;
+  
+  // Table rows
+  doc.setFont(undefined, 'normal');
+  const classIds = receipt.classIds || [];
+  classIds.forEach(classId => {
+    const c = window.App.state.classes.find(cl => cl.id === classId);
+    if (c) {
+      doc.text(window.App.fmtDate(c.date), 20, y);
+      doc.text(c.classType || 'Individual', 60, y);
+      doc.text(window.App.fmtCurrency(c.fee), 150, y);
+      y += 7;
+    }
+  });
+  
+  // Total
+  y += 5;
+  doc.setFont(undefined, 'bold');
+  doc.setFontSize(12);
+  doc.text('TOTAL:', 120, y);
+  doc.text(window.App.fmtCurrency(receipt.amount), 150, y);
+  
+  // Footer
+  y += 20;
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(9);
+  doc.text('Gracias por tu confianza', 105, y, { align: 'center' });
+  
+  return doc.output('blob');
+}
+
+// Upload PDF to WhatsApp Cloud API
+async function uploadMediaToWhatsApp(pdfBlob, filename) {
+  const phoneId = window.App.state.settings?.whatsappPhoneId;
+  const token = window.App.state.settings?.whatsappToken;
+  
+  if (!phoneId || !token) {
+    throw new Error('WhatsApp Business API no configurada');
+  }
+  
+  const formData = new FormData();
+  formData.append('file', pdfBlob, filename);
+  formData.append('messaging_product', 'whatsapp');
+  
+  const response = await fetch(`https://graph.facebook.com/v18.0/${phoneId}/media`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Error uploading media');
+  }
+  
+  const data = await response.json();
+  return data.id; // Media ID
+}
+
+// Send WhatsApp message with document
+async function sendWhatsAppDocument(phone, mediaId, caption, filename) {
+  const phoneId = window.App.state.settings?.whatsappPhoneId;
+  const token = window.App.state.settings?.whatsappToken;
+  
+  if (!phoneId || !token) {
+    throw new Error('WhatsApp Business API no configurada');
+  }
+  
+  const response = await fetch(`https://graph.facebook.com/v18.0/${phoneId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: phone,
+      type: 'document',
+      document: {
+        id: mediaId,
+        caption: caption,
+        filename: filename
+      }
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Error sending message');
+  }
+  
+  return await response.json();
+}
+
+// Send pending receipts via WhatsApp Business API
 window.App.sendPendingReceipts = async function() {
-  const whatsappPhone = window.App.state.settings?.whatsappPhone;
-  if (!whatsappPhone) {
-    window.App.showToast('Configura tu número de WhatsApp en Ajustes', 'error');
+  const phoneId = window.App.state.settings?.whatsappPhoneId;
+  const token = window.App.state.settings?.whatsappToken;
+  
+  if (!phoneId || !token) {
+    window.App.showToast('Configura WhatsApp Business API en Ajustes', 'error');
     return;
   }
   
@@ -523,12 +655,12 @@ window.App.sendPendingReceipts = async function() {
   
   window.App.confirmAction(
     'Enviar recibos por WhatsApp',
-    `Se procesarán ${totalReceipts} recibo(s) de ${studentsPending.length} alumno(s). El PDF se descargará automáticamente y deberás adjuntarlo manualmente en WhatsApp. ¿Continuar?`,
-    () => processPendingReceiptsWhatsApp(studentsPending)
+    `Se enviarán automáticamente ${totalReceipts} recibo(s) con PDF adjunto a ${studentsPending.length} alumno(s) vía WhatsApp Business API. ¿Continuar?`,
+    () => processPendingReceiptsAPI(studentsPending)
   );
 };
 
-async function processPendingReceiptsWhatsApp(studentsPending) {
+async function processPendingReceiptsAPI(studentsPending) {
   let sent = 0;
   let failed = 0;
   
@@ -536,39 +668,38 @@ async function processPendingReceiptsWhatsApp(studentsPending) {
     const student = item.student;
     const phone = student.phone?.trim().replace(/\D/g, ''); // Clean phone number
     
+    if (!phone) {
+      failed += item.receipts.length;
+      continue;
+    }
+    
     for (const receipt of item.receipts) {
       try {
-        // Generate and download PDF
-        await window.App.downloadReceiptPdf(student, receipt);
+        // Generate PDF as blob
+        const pdfBlob = await generateReceiptPdfBlob(student, receipt);
+        const filename = `recibo_${receipt.number}.pdf`;
         
-        // Wait for PDF to start downloading
-        await sleep(800);
+        // Upload to WhatsApp Cloud API
+        const mediaId = await uploadMediaToWhatsApp(pdfBlob, filename);
         
-        // Build WhatsApp message
+        // Send message with document
         const academyName = window.App.state.settings?.academyName || 'Academia';
         const firstName = student.name.split(' ')[0];
-        const message = `Hola ${firstName},\n\nTe envío el recibo ${receipt.number} por importe de ${window.App.fmtCurrency(receipt.amount)}.\n\nPor favor, adjunta el PDF descargado.\n\nGracias,\n${academyName}`;
+        const caption = `Hola ${firstName}, te envío el recibo ${receipt.number} por importe de ${window.App.fmtCurrency(receipt.amount)}. Gracias, ${academyName}`;
         
-        // Open WhatsApp
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
+        await sendWhatsAppDocument(phone, mediaId, caption, filename);
         
-        // Ask for confirmation
-        const wasSent = await confirmWhatsAppSent(student.name, receipt.number);
+        // Mark as sent
+        receipt.status = 'sent';
+        receipt.sentAt = window.App.todayStr();
+        sent++;
         
-        if (wasSent) {
-          receipt.status = 'sent';
-          receipt.sentAt = window.App.todayStr();
-          sent++;
-        } else {
-          failed++;
-        }
-        
-        // Wait between receipts
-        await sleep(1500);
+        // Wait between receipts to avoid rate limiting
+        await sleep(1000);
         
       } catch (e) {
         console.error(`Error sending receipt ${receipt.number}:`, e);
+        window.App.showToast(`Error enviando a ${student.name}: ${e.message}`, 'error');
         failed++;
       }
     }
@@ -578,42 +709,12 @@ async function processPendingReceiptsWhatsApp(studentsPending) {
   window.App.renderCurrentTab();
   
   if (sent > 0 && failed === 0) {
-    window.App.showToast(`✓ ${sent} recibo(s) enviado(s) por WhatsApp`, 'success');
+    window.App.showToast(`✓ ${sent} recibo(s) enviado(s) automáticamente por WhatsApp`, 'success');
   } else if (sent > 0) {
-    window.App.showToast(`${sent} enviado(s), ${failed} cancelado(s)`, 'info');
+    window.App.showToast(`${sent} enviado(s), ${failed} fallido(s)`, 'info');
   } else {
-    window.App.showToast('No se envió ningún recibo', 'info');
+    window.App.showToast('No se pudo enviar ningún recibo', 'error');
   }
-}
-
-function confirmWhatsAppSent(studentName, receiptNumber) {
-  return new Promise((resolve) => {
-    const modalHtml = `
-      <div class="modal-overlay" id="whatsapp-confirm-modal">
-        <div class="modal-content" style="max-width:450px">
-          <h3>Confirmación de envío</h3>
-          <p>¿Enviaste correctamente el recibo <strong>${receiptNumber}</strong> a <strong>${studentName}</strong> por WhatsApp con el PDF adjunto?</p>
-          <div class="modal-actions">
-            <button id="wa-confirm-no" class="btn btn-secondary">No / Cancelar</button>
-            <button id="wa-confirm-yes" class="btn btn-primary">Sí, enviado</button>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = document.getElementById('whatsapp-confirm-modal');
-    
-    document.getElementById('wa-confirm-yes').onclick = () => {
-      modal.remove();
-      resolve(true);
-    };
-    
-    document.getElementById('wa-confirm-no').onclick = () => {
-      modal.remove();
-      resolve(false);
-    };
-  });
 }
 
 function sleep(ms) {
