@@ -69,7 +69,7 @@ window.App.renderDashboard = function() {
       <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">Impartidas + Futuras</small>
     </div>
     <div class="stat-card stat-danger">
-      <span class="stat-label">Recibos a enviar</span>
+      <span class="stat-label">Recibos a generar</span>
       <span class="stat-value">${studentsWithUnbilledClasses.length}</span>
     </div>
     <div class="stat-card stat-success">
