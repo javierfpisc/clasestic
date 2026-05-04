@@ -22,29 +22,31 @@ window.App.renderDashboard = function() {
   const pastClassesThisMonth = classesThisMonth.filter(c => c.date < today).length;
   const futureClassesThisMonth = classesThisMonth.filter(c => c.date >= today).length;
   
-  // Students with unbilled classes (not in any receipt)
-  const studentsWithUnbilledClasses = window.App.state.students.filter(s => {
+  // Students with debt: unbilled classes OR unpaid receipts (sent/pending)
+  const studentsWithDebt = window.App.state.students.filter(s => {
+    // Check for unbilled classes
     const billedClassIds = new Set();
-    
-    // Get all class IDs in ANY receipt (pending, sent, or paid)
     (s.receipts || []).forEach(r => {
       if (r.classIds) {
         r.classIds.forEach(id => billedClassIds.add(id));
       }
     });
     
-    // Check if student has past unbilled classes
     const unbilledClasses = window.App.state.classes.filter(c => 
       c.date <= today && 
       c.studentIds.includes(s.id) && 
       !billedClassIds.has(c.id)
     );
     
-    return unbilledClasses.length > 0;
+    // Check for unpaid receipts (pending or sent)
+    const unpaidReceipts = (s.receipts || []).filter(r => r.status !== 'paid');
+    
+    return unbilledClasses.length > 0 || unpaidReceipts.length > 0;
   });
   
-  // Calculate total amount of unbilled classes
-  const totalUnbilledAmount = studentsWithUnbilledClasses.reduce((sum, s) => {
+  // Calculate total debt (unbilled classes + unpaid receipts)
+  const totalDebt = studentsWithDebt.reduce((sum, s) => {
+    // Amount from unbilled classes
     const billedClassIds = new Set();
     (s.receipts || []).forEach(r => {
       if (r.classIds) r.classIds.forEach(id => billedClassIds.add(id));
@@ -54,7 +56,14 @@ window.App.renderDashboard = function() {
       c.studentIds.includes(s.id) && 
       !billedClassIds.has(c.id)
     );
-    return sum + unbilledClasses.reduce((s2, c) => s2 + (parseFloat(c.fee) || 0), 0);
+    const unbilledAmount = unbilledClasses.reduce((s2, c) => s2 + (parseFloat(c.fee) || 0), 0);
+    
+    // Amount from unpaid receipts
+    const unpaidAmount = (s.receipts || [])
+      .filter(r => r.status !== 'paid')
+      .reduce((s2, r) => s2 + (parseFloat(r.amount) || 0), 0);
+    
+    return sum + unbilledAmount + unpaidAmount;
   }, 0);
 
   document.getElementById('stats-grid').innerHTML = `
@@ -69,12 +78,12 @@ window.App.renderDashboard = function() {
       <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">Impartidas + Futuras</small>
     </div>
     <div class="stat-card stat-danger">
-      <span class="stat-label">Recibos a generar</span>
-      <span class="stat-value">${studentsWithUnbilledClasses.length}</span>
+      <span class="stat-label">Con deuda</span>
+      <span class="stat-value">${studentsWithDebt.length}</span>
     </div>
     <div class="stat-card stat-success">
-      <span class="stat-label">Por facturar</span>
-      <span class="stat-value" style="font-size:1.1rem">${window.App.fmtCurrency(totalUnbilledAmount)}</span>
+      <span class="stat-label">Deuda total</span>
+      <span class="stat-value" style="font-size:1.1rem">${window.App.fmtCurrency(totalDebt)}</span>
     </div>
   `;
 
@@ -109,14 +118,15 @@ window.App.renderDashboard = function() {
     }).join('');
   }
 
-  // Students with unbilled classes
+  // Students with debt (unbilled classes or unpaid receipts)
   const debtorEl = document.getElementById('debtor-students');
-  if (studentsWithUnbilledClasses.length === 0) {
-    debtorEl.innerHTML = `<p class="empty-state" style="padding:20px 0"><small>Todas las clases están facturadas 🎉</small></p>`;
+  if (studentsWithDebt.length === 0) {
+    debtorEl.innerHTML = `<p class="empty-state" style="padding:20px 0"><small>Sin deudas pendientes 🎉</small></p>`;
   } else {
-    // Sort by total unbilled amount (highest first)
-    const sorted = [...studentsWithUnbilledClasses].sort((a, b) => {
-      const getUnbilledAmount = (s) => {
+    // Sort by total debt amount (highest first)
+    const sorted = [...studentsWithDebt].sort((a, b) => {
+      const getDebtAmount = (s) => {
+        // Unbilled classes
         const billedClassIds = new Set();
         (s.receipts || []).forEach(r => {
           if (r.classIds) r.classIds.forEach(id => billedClassIds.add(id));
@@ -126,15 +136,22 @@ window.App.renderDashboard = function() {
           c.studentIds.includes(s.id) && 
           !billedClassIds.has(c.id)
         );
-        return unbilledClasses.reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
+        const unbilledAmount = unbilledClasses.reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
+        
+        // Unpaid receipts
+        const unpaidAmount = (s.receipts || [])
+          .filter(r => r.status !== 'paid')
+          .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        
+        return unbilledAmount + unpaidAmount;
       };
-      return getUnbilledAmount(b) - getUnbilledAmount(a);
+      return getDebtAmount(b) - getDebtAmount(a);
     }).slice(0, 6);
     debtorEl.innerHTML = sorted.map(s => window.App.buildDebtorCard(s)).join('');
   }
 }
 
-// Build debtor card for dashboard (shows unbilled classes)
+// Build debtor card for dashboard (shows unbilled classes and unpaid receipts)
 window.App.buildDebtorCard = function(s) {
   const today = window.App.todayStr();
   const billedClassIds = new Set();
@@ -151,15 +168,45 @@ window.App.buildDebtorCard = function(s) {
     .filter(c => c.date <= today && c.studentIds.includes(s.id) && !billedClassIds.has(c.id))
     .sort((a, b) => b.date.localeCompare(a.date)); // Most recent first
   
-  const totalAmount = unbilledClasses.reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
+  const unbilledAmount = unbilledClasses.reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
   
-  // Get last receipt (most recent)
-  const lastReceipt = (s.receipts || [])
-    .filter(r => r.status !== 'paid') // Exclude paid ones
-    .sort((a, b) => b.generatedAt.localeCompare(a.generatedAt))[0];
+  // Get unpaid receipts (pending or sent)
+  const unpaidReceipts = (s.receipts || [])
+    .filter(r => r.status !== 'paid')
+    .sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
+  
+  const unpaidAmount = unpaidReceipts.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+  
+  const totalDebt = unbilledAmount + unpaidAmount;
   
   const statusLabels = { pending: 'Pendiente', sent: 'Enviado', paid: 'Pagado' };
   const statusColors = { pending: '#f59e0b', sent: '#3b82f6', paid: '#10b981' };
+  
+  // Build details HTML
+  let detailsHTML = '';
+  
+  // Show unpaid receipts first
+  if (unpaidReceipts.length > 0) {
+    detailsHTML += unpaidReceipts.map(r => `
+      <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border-light); background:#fff8e1; padding:6px 8px; margin-left:-8px; margin-right:-8px;">
+        <span style="color:${statusColors[r.status]};font-weight:500;">📄 Recibo ${r.number} · ${statusLabels[r.status]}</span>
+        <span style="font-weight:600;">${window.App.fmtCurrency(r.amount)}</span>
+      </div>
+    `).join('');
+  }
+  
+  // Show unbilled classes
+  if (unbilledClasses.length > 0) {
+    detailsHTML += unbilledClasses.map(c => {
+      const classType = c.type === 'individual' ? 'Individual' : 
+                       (c.groupId ? (window.App.state.groups.find(g => g.id === c.groupId)?.name || 'Grupo') : 'Grupo');
+      return `
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border-light);">
+          <span>📅 ${window.App.fmtDate(c.date)} · ${classType}</span>
+          <span style="font-weight:500;">${window.App.fmtCurrency(c.fee)}</span>
+        </div>`;
+    }).join('');
+  }
   
   return `
     <div class="student-card">
@@ -167,19 +214,13 @@ window.App.buildDebtorCard = function(s) {
       <div class="student-info">
         <div class="student-name">${window.App.escHtml(s.name)}</div>
         <div class="student-meta">
-          <strong>${window.App.fmtCurrency(totalAmount)}</strong> · ${unbilledClasses.length} clase${unbilledClasses.length !== 1 ? 's' : ''} pendiente${unbilledClasses.length !== 1 ? 's' : ''}
-          ${lastReceipt ? ` · <span style="color:${statusColors[lastReceipt.status]};font-weight:500;">Recibo ${statusLabels[lastReceipt.status]}</span>` : ''}
+          <strong>${window.App.fmtCurrency(totalDebt)}</strong> · 
+          ${unbilledClasses.length > 0 ? `${unbilledClasses.length} clase${unbilledClasses.length !== 1 ? 's' : ''} sin facturar` : ''}
+          ${unbilledClasses.length > 0 && unpaidReceipts.length > 0 ? ' · ' : ''}
+          ${unpaidReceipts.length > 0 ? `${unpaidReceipts.length} recibo${unpaidReceipts.length !== 1 ? 's' : ''} sin pagar` : ''}
         </div>
         <div style="margin-top:8px; font-size:0.85rem; color:var(--text-secondary);">
-          ${unbilledClasses.map(c => {
-            const classType = c.type === 'individual' ? 'Individual' : 
-                             (c.groupId ? (window.App.state.groups.find(g => g.id === c.groupId)?.name || 'Grupo') : 'Grupo');
-            return `
-              <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border-light);">
-                <span>📅 ${window.App.fmtDate(c.date)} · ${classType}</span>
-                <span style="font-weight:500;">${window.App.fmtCurrency(c.fee)}</span>
-              </div>`;
-          }).join('')}
+          ${detailsHTML}
         </div>
       </div>
     </div>`;
