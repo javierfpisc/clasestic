@@ -8,7 +8,18 @@ window.App = window.App || {};
 window.App.renderDashboard = function() {
   // Stats
   const totalStudents = window.App.state.students.length;
-  const totalClasses  = window.App.state.classes.length;
+  
+  // Count classes for current month (past and future)
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const today = window.App.todayStr();
+  
+  const classesThisMonth = window.App.state.classes.filter(c => c.date.startsWith(monthPrefix));
+  const pastClassesThisMonth = classesThisMonth.filter(c => c.date < today).length;
+  const futureClassesThisMonth = classesThisMonth.filter(c => c.date >= today).length;
+  
   const debtors       = window.App.state.students.filter(s => window.App.calculateStudentBalance(s.id) > 0);
   const totalDebt     = debtors.reduce((sum, s) => sum + window.App.calculateStudentBalance(s.id), 0);
 
@@ -18,8 +29,9 @@ window.App.renderDashboard = function() {
       <span class="stat-value">${totalStudents}</span>
     </div>
     <div class="stat-card stat-warning">
-      <span class="stat-label">Clases</span>
-      <span class="stat-value">${totalClasses}</span>
+      <span class="stat-label">Clases este mes</span>
+      <span class="stat-value">${pastClassesThisMonth} + ${futureClassesThisMonth}</span>
+      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">Impartidas + Futuras</small>
     </div>
     <div class="stat-card stat-danger">
       <span class="stat-label">Con deuda</span>
