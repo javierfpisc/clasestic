@@ -51,7 +51,7 @@ window.App.renderDashboard = function() {
     <div class="stat-card stat-danger">
       <span class="stat-label">Con deuda</span>
       <span class="stat-value">${studentsWithDebt.length}</span>
-      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">Recibos enviados pero no pagados</small>
+      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">Recibos generados pero no pagados</small>
     </div>
     <div class="stat-card stat-success">
       <span class="stat-label">Deuda total</span>
