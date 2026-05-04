@@ -44,7 +44,6 @@ window.App.renderDashboard = function() {
   `;
 
   // Upcoming classes (today onwards, sorted)
-  const today = window.App.todayStr();
   const upcoming = window.App.state.classes
     .filter(c => c.date >= today)
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
