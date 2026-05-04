@@ -111,8 +111,24 @@ window.App.upsertGCalEvent = async function(cls) {
     return s ? s.name : '?';
   }).join(', ');
 
+  // Build event title: student name for individual, group name for group classes
+  let eventTitle = '';
+  if (cls.type === 'individual') {
+    // For individual classes, use student name
+    const student = window.App.state.students.find(s => s.id === cls.studentIds[0]);
+    eventTitle = student ? student.name : 'Clase Individual';
+  } else {
+    // For group classes, use group name
+    if (cls.groupId) {
+      const group = window.App.state.groups?.find(g => g.id === cls.groupId);
+      eventTitle = group ? group.name : 'Clase Grupal';
+    } else {
+      eventTitle = 'Clase Grupal';
+    }
+  }
+
   const event = {
-    summary:     `Clase ${cls.type === 'individual' ? 'individual' : 'grupal'}${cls.course ? ' · ' + cls.course : ''}`,
+    summary:     eventTitle,
     description: `Alumnos: ${studentNames}\nCuota: ${window.App.fmtCurrency(cls.fee)}/alumno`,
     start: { dateTime: startDt.toISOString(), timeZone },
     end:   { dateTime: endDt.toISOString(),   timeZone },
