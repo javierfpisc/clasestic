@@ -8,6 +8,8 @@ window.App = window.App || {};
 window.App.renderDashboard = function() {
   // Stats
   const totalStudents = window.App.state.students.length;
+  const totalGroups = (window.App.state.groups || []).length;
+  const totalCourses = (window.App.state.courses || []).length;
   
   // Count classes for current month (past and future)
   const now = new Date();
@@ -27,6 +29,7 @@ window.App.renderDashboard = function() {
     <div class="stat-card stat-primary">
       <span class="stat-label">Alumnos</span>
       <span class="stat-value">${totalStudents}</span>
+      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">${totalGroups} grupos · ${totalCourses} cursos</small>
     </div>
     <div class="stat-card stat-warning">
       <span class="stat-label">Clases este mes</span>
