@@ -22,10 +22,18 @@ window.App.renderStudents = function() {
 window.App.applyStudentFilters = function() {
   const query  = document.getElementById('student-search').value.toLowerCase().trim();
   const course = document.getElementById('student-filter-course').value;
+  const activeFilter = document.getElementById('student-filter-active').value;
 
   let students = window.App.state.students;
   if (query)  students = students.filter(s => s.name.toLowerCase().includes(query) || (s.phone || '').includes(query));
   if (course) students = students.filter(s => s.course === course);
+  
+  // Filter by active status (default to active if property doesn't exist)
+  if (activeFilter === 'active') {
+    students = students.filter(s => s.active !== false);
+  } else if (activeFilter === 'inactive') {
+    students = students.filter(s => s.active === false);
+  }
 
   const list = document.getElementById('students-list');
   if (students.length === 0) {
@@ -44,6 +52,7 @@ window.App.applyStudentFilters = function() {
 
 window.App.buildStudentCard = function(s) {
   const pendingReceipts = (s.receipts || []).filter(r => r.status === 'pending');
+  const isActive = s.active !== false; // Default to active if not set
   
   // Get student groups
   const studentGroups = window.App.state.groups.filter(g => (g.studentIds || []).includes(s.id));
@@ -52,7 +61,7 @@ window.App.buildStudentCard = function(s) {
     : '–';
   
   return `
-    <div class="student-card">
+    <div class="student-card" style="${!isActive ? 'opacity:0.6;' : ''}">
       <div class="student-avatar">${window.App.initials(s.name)}</div>
       <div class="student-info">
         <div class="student-name">${window.App.escHtml(s.name)}</div>
@@ -69,6 +78,10 @@ window.App.buildStudentCard = function(s) {
           </button>` : ''}
       </div>
       <div class="student-actions">
+        ${!isActive ? '<span style="background:#ef4444;color:white;padding:4px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;margin-right:8px;">INACTIVO</span>' : ''}
+        <button class="btn btn-sm ${isActive ? 'btn-secondary' : 'btn-primary'}" onclick="window.App.toggleStudentActive('${s.id}')" title="${isActive ? 'Desactivar' : 'Activar'} alumno">
+          ${isActive ? '❌ Desactivar' : '✅ Activar'}
+        </button>
         <button class="btn btn-icon" onclick="window.openEditStudent('${s.id}')" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -129,7 +142,8 @@ window.App.saveStudent = function(e) {
       course, 
       createdAt: window.App.todayStr(), 
       balance,
-      receipts: []
+      receipts: [],
+      active: true  // New students are active by default
     });
   }
 
@@ -158,6 +172,31 @@ window.App.deleteStudent = function(studentId) {
   );
 }
 
+// Toggle student active/inactive status
+window.App.toggleStudentActive = function(studentId) {
+  const student = window.App.state.students.find(s => s.id === studentId);
+  if (!student) return;
+  
+  const isActive = student.active !== false;
+  const newStatus = !isActive;
+  
+  window.App.confirmAction(
+    newStatus ? 'Activar alumno' : 'Desactivar alumno',
+    newStatus 
+      ? `¿Activar a ${student.name}? Podrá ser seleccionado en clases y grupos.`
+      : `¿Desactivar a ${student.name}? No podrá ser seleccionado en nuevas clases o grupos, pero se conservará su histórico.`,
+    () => {
+      student.active = newStatus;
+      window.App.saveState();
+      window.App.renderStudents();
+      window.App.showToast(
+        `${student.name} ${newStatus ? 'activado' : 'desactivado'}`,
+        'success'
+      );
+    }
+  );
+}
+
 function populateCourseSelect(selectId, selectedValue) {
   const sel = document.getElementById(selectId);
   const sorted = window.App.state.courses.slice().sort((a, b) => a.name.localeCompare(b.name));
@@ -180,6 +219,7 @@ window.App.initStudentEvents = function() {
   document.getElementById('form-student').addEventListener('submit', window.App.saveStudent);
   document.getElementById('student-search').addEventListener('input', window.App.applyStudentFilters);
   document.getElementById('student-filter-course').addEventListener('change', window.App.applyStudentFilters);
+  document.getElementById('student-filter-active').addEventListener('change', window.App.applyStudentFilters);
 }
 
 // Make functions globally available for onclick handlers

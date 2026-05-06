@@ -139,10 +139,13 @@ window.App.deleteGroup = function(groupId) {
 
 window.App.buildGroupStudentsPicker = function(selectedIds) {
   const picker = document.getElementById('group-students-picker');
-  const students = [...window.App.state.students].sort((a, b) => a.name.localeCompare(b.name));
+  // Only show active students (active !== false)
+  const students = [...window.App.state.students]
+    .filter(s => s.active !== false)
+    .sort((a, b) => a.name.localeCompare(b.name));
   
   if (students.length === 0) {
-    picker.innerHTML = '<p class="form-hint">No hay alumnos disponibles.</p>';
+    picker.innerHTML = '<p class="form-hint">No hay alumnos activos disponibles.</p>';
     return;
   }
   

@@ -194,10 +194,14 @@ function buildStudentsPicker(selectedIds) {
   const type = document.getElementById('class-type').value;
   const picker = document.getElementById('class-students-picker');
 
-  let students = window.App.state.students.slice().sort((a, b) => a.name.localeCompare(b.name));
+  // Only show active students (active !== false)
+  let students = window.App.state.students
+    .filter(s => s.active !== false)
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   if (students.length === 0) {
-    picker.innerHTML = `<p style="color:var(--gray-400);font-size:0.8rem;padding:8px">Sin alumnos registrados</p>`;
+    picker.innerHTML = `<p style="color:var(--gray-400);font-size:0.8rem;padding:8px">Sin alumnos activos registrados</p>`;
     return;
   }
 
