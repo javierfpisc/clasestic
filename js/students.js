@@ -62,7 +62,9 @@ window.App.applyStudentFilters = function() {
         <p>No hay alumnos registrados</p>
       </div>`;
   } else {
-    list.innerHTML = students.map(s => window.App.buildStudentCard(s)).join('');
+    // Sort students alphabetically by name
+    const sortedStudents = students.slice().sort((a, b) => a.name.localeCompare(b.name));
+    list.innerHTML = sortedStudents.map(s => window.App.buildStudentCard(s)).join('');
   }
 }
 
