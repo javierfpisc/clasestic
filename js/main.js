@@ -43,6 +43,9 @@ function saveSettings() {
     whatsappPhoneId, whatsappToken, whatsappBusinessId,
   };
   
+  // Update page title with academy name
+  document.title = `${window.App.state.settings.academyName} - Gestión de Clases`;
+  
   window.App.saveState();
   window.App.closeModal('modal-settings');
   window.App.showToast('Ajustes guardados', 'success');
@@ -120,6 +123,11 @@ function initEvents() {
 // Main initialization
 async function init() {
   window.App.loadState();
+  
+  // Update page title with academy name
+  const academyName = window.App.state.settings?.academyName || 'Academia TIC';
+  document.title = `${academyName} - Gestión de Clases`;
+  
   initEvents();
   window.App.initGCalTokenClient();
   window.App.updateGCalUI();
@@ -128,6 +136,10 @@ async function init() {
   // Pull from GitHub FIRST to ensure we have latest data
   // This will overwrite local data if GitHub has newer version
   const pulled = await window.App.githubPull();
+  
+  // Update title again in case GitHub sync changed the academy name
+  const finalAcademyName = window.App.state.settings?.academyName || 'Academia TIC';
+  document.title = `${finalAcademyName} - Gestión de Clases`;
   
   // Now render with the latest data (either from GitHub or local)
   window.App.renderDashboard();
