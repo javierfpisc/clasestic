@@ -16,17 +16,33 @@ window.App.renderStudents = function() {
   filterEl.innerHTML = `<option value="">Todos los cursos</option>` +
     courseNames.map(c => `<option value="${window.App.escHtml(c)}" ${prevVal === c ? 'selected' : ''}>${window.App.escHtml(c)}</option>`).join('');
 
+  // Populate group filter
+  const groups = (window.App.state.groups || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const groupFilterEl = document.getElementById('student-filter-group');
+  const prevGroupVal = groupFilterEl.value;
+  groupFilterEl.innerHTML = `<option value="">Todos los grupos</option>` +
+    groups.map(g => `<option value="${g.id}" ${prevGroupVal === g.id ? 'selected' : ''}>${window.App.escHtml(g.name)}</option>`).join('');
+
   window.App.applyStudentFilters();
 };
 
 window.App.applyStudentFilters = function() {
   const query  = document.getElementById('student-search').value.toLowerCase().trim();
   const course = document.getElementById('student-filter-course').value;
+  const groupId = document.getElementById('student-filter-group').value;
   const activeFilter = document.getElementById('student-filter-active').value;
 
   let students = window.App.state.students;
   if (query)  students = students.filter(s => s.name.toLowerCase().includes(query) || (s.phone || '').includes(query));
   if (course) students = students.filter(s => s.course === course);
+  
+  // Filter by group
+  if (groupId) {
+    const group = window.App.state.groups?.find(g => g.id === groupId);
+    if (group) {
+      students = students.filter(s => (group.studentIds || []).includes(s.id));
+    }
+  }
   
   // Filter by active status (default to active if property doesn't exist)
   if (activeFilter === 'active') {
@@ -219,6 +235,7 @@ window.App.initStudentEvents = function() {
   document.getElementById('form-student').addEventListener('submit', window.App.saveStudent);
   document.getElementById('student-search').addEventListener('input', window.App.applyStudentFilters);
   document.getElementById('student-filter-course').addEventListener('change', window.App.applyStudentFilters);
+  document.getElementById('student-filter-group').addEventListener('change', window.App.applyStudentFilters);
   document.getElementById('student-filter-active').addEventListener('change', window.App.applyStudentFilters);
 }
 
