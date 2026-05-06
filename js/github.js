@@ -174,9 +174,24 @@ window.App.githubPull = async function() {
     
     if (!file || !file.content) {
       // File doesn't exist in gist yet
-      console.log('[GitHub] clasestic.json not in gist, will create on next push');
-      window.App.setGithubStatusUI('ok');
-      setTimeout(() => window.App.githubPush(), 500);
+      console.log('[GitHub] clasestic.json not in gist');
+      
+      // Check if local state has meaningful data before pushing
+      const hasLocalData = 
+        (window.App.state.students && window.App.state.students.length > 0) ||
+        (window.App.state.classes && window.App.state.classes.length > 0) ||
+        (window.App.state.courses && window.App.state.courses.length > 0) ||
+        (window.App.state.groups && window.App.state.groups.length > 0);
+      
+      if (hasLocalData) {
+        console.log('[GitHub] Local has data, will create file in gist on next push');
+        window.App.setGithubStatusUI('ok');
+        setTimeout(() => window.App.githubPush(), 500);
+      } else {
+        console.log('[GitHub] Local is empty, skipping push to avoid overwriting');
+        window.App.setGithubStatusUI('ok');
+        window.App.showToast('Gist vacío detectado. No se sobrescribirá con datos vacíos.', 'info');
+      }
       return true;
     }
     
@@ -187,6 +202,24 @@ window.App.githubPull = async function() {
       console.warn('[GitHub] Cannot decrypt remote file - ignoring remote, will use local data');
       window.App.setGithubStatusUI('ok');
       return false;
+    }
+    
+    // Safety warning: if remote has data but local is empty
+    const hasLocalData = 
+      (window.App.state.students && window.App.state.students.length > 0) ||
+      (window.App.state.classes && window.App.state.classes.length > 0) ||
+      (window.App.state.courses && window.App.state.courses.length > 0) ||
+      (window.App.state.groups && window.App.state.groups.length > 0);
+    
+    const hasRemoteData =
+      (remote.students && remote.students.length > 0) ||
+      (remote.classes && remote.classes.length > 0) ||
+      (remote.courses && remote.courses.length > 0) ||
+      (remote.groups && remote.groups.length > 0);
+    
+    if (hasRemoteData && !hasLocalData) {
+      console.log('[GitHub] Remote has data, local is empty - adopting remote data');
+      window.App.showToast('Datos cargados desde GitHub (dispositivo nuevo)', 'success');
     }
     
     reconcileWithRemote(remote);
@@ -270,6 +303,20 @@ window.App.scheduleGithubPush = function() {
 window.App.githubPush = async function(retry) {
   const cfg = window.App.getGithubConfig();
   if (!cfg || window.App.githubSyncing) return;
+
+  // Safety check: prevent pushing empty state if gist might have data
+  const hasLocalData = 
+    (window.App.state.students && window.App.state.students.length > 0) ||
+    (window.App.state.classes && window.App.state.classes.length > 0) ||
+    (window.App.state.courses && window.App.state.courses.length > 0) ||
+    (window.App.state.groups && window.App.state.groups.length > 0);
+  
+  if (!hasLocalData && !retry) {
+    console.warn('[GitHub] Refusing to push empty state - might overwrite good data');
+    window.App.setGithubStatusUI('error');
+    window.App.showToast('No se puede sincronizar: el estado local está vacío', 'error');
+    return;
+  }
 
   window.App.setGithubSyncing(true);
   window.App.setGithubStatusUI('syncing');
