@@ -156,6 +156,7 @@ body {
 .btn-danger { background: var(--danger); color: var(--white); }
 .btn-danger:hover { background: #dc2626; }
 .btn-success { background: var(--success); color: var(--white); }
+.btn-success:hover { background: #15803d; }
 .btn-icon {
   background: none;
   color: var(--gray-600);
@@ -367,6 +368,23 @@ input::placeholder { color: var(--gray-400); }
   gap: 5px;
   align-items: flex-end;
   flex-shrink: 0;
+}
+.student-card-actions {
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+  margin-bottom: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+}
+.student-card-actions .btn {
+  flex: 1;
+}
+.student-card-actions .btn-icon {
+  flex: 0;
 }
 
 /* =============================================

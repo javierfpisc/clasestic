@@ -81,10 +81,6 @@ window.App.buildStudentCard = function(s) {
       <div class="student-avatar">${window.App.initials(s.name)}</div>
       <div class="student-info">
         <div class="student-name">${window.App.escHtml(s.name)}</div>
-        <button class="btn btn-sm btn-primary" style="margin-top:6px;" onclick="event.stopPropagation(); window.App.createClassForStudent('${s.id}')" title="Crear clase individual para ${window.App.escHtml(s.name)}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Crear clase individual
-        </button>
         <div class="student-meta">
           ${s.course ? '<strong>Curso:</strong> ' + window.App.escHtml(s.course) : ''}
           ${s.course && studentGroups.length > 0 ? ' · ' : ''}
@@ -98,21 +94,27 @@ window.App.buildStudentCard = function(s) {
           </button>` : ''}
       </div>
       <div class="student-actions">
-        ${!isActive ? '<span style="background:#ef4444;color:white;padding:4px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;margin-right:8px;">INACTIVO</span>' : ''}
-        <button class="btn btn-sm ${isActive ? 'btn-secondary' : 'btn-primary'}" onclick="window.App.toggleStudentActive('${s.id}')" title="${isActive ? 'Desactivar' : 'Activar'} alumno">
+        ${!isActive ? '<span style="background:#ef4444;color:white;padding:4px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;margin-bottom:8px;">INACTIVO</span>' : ''}
+        <button class="btn btn-sm ${isActive ? 'btn-secondary' : 'btn-primary'}" onclick="window.App.toggleStudentActive('${s.id}')" title="${isActive ? 'Desactivar' : 'Activar'} alumno" style="width:100%">
           ${isActive ? '❌ Desactivar' : '✅ Activar'}
         </button>
-        <button class="btn btn-icon" onclick="window.openEditStudent('${s.id}')" title="Editar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>
-        <button class="btn btn-sm btn-primary" onclick="window.openStudentReceipts('${s.id}')" title="Ver histórico de recibos">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Recibos
-        </button>
-        <button class="btn btn-icon" style="color:var(--danger)" onclick="window.deleteStudent('${s.id}')" title="Eliminar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-        </button>
       </div>
+    </div>
+    <div class="student-card-actions">
+      <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.App.createClassForStudent('${s.id}')" title="Crear clase individual">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Crear clase
+      </button>
+      <button class="btn btn-sm btn-success" onclick="window.openStudentReceipts('${s.id}')" title="Ver recibos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Recibos
+      </button>
+      <button class="btn btn-icon" onclick="window.openEditStudent('${s.id}')" title="Editar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <button class="btn btn-icon" style="color:var(--danger)" onclick="window.deleteStudent('${s.id}')" title="Eliminar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>
     </div>`;
 }
 
