@@ -313,7 +313,7 @@ input::placeholder { color: var(--gray-400); }
   box-shadow: var(--shadow);
   margin-bottom: 10px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 .student-avatar {

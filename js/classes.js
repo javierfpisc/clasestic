@@ -86,11 +86,14 @@ function buildClassCard(c) {
     </div>`;
 }
 
-window.App.openNewClass = function(prefillDate) {
+window.App.openNewClass = function(prefillDate, lockedStudentId) {
   userEditedFee = false; // Reset flag for new class
   document.getElementById('modal-class-title').textContent = 'Nueva clase';
   document.getElementById('class-id').value   = '';
   document.getElementById('class-type').value = 'individual';
+  
+  // Store locked student if provided
+  window.App._lockedStudentId = lockedStudentId || null;
   
   // Always use today or future date
   const today = window.App.todayStr();
@@ -122,7 +125,7 @@ window.App.openNewClass = function(prefillDate) {
   document.getElementById('class-fee').value = defaultFee;
   
   populateGroupSelect('');
-  buildStudentsPicker([]);
+  buildStudentsPicker(lockedStudentId ? [lockedStudentId] : []);
   updateClassTypeUI('individual');
   
   // Add listener for date changes
@@ -193,6 +196,26 @@ window.App.openEditClass = function(classId) {
 function buildStudentsPicker(selectedIds) {
   const type = document.getElementById('class-type').value;
   const picker = document.getElementById('class-students-picker');
+  
+  // If there's a locked student, show only that student (non-interactive)
+  if (window.App._lockedStudentId) {
+    const student = window.App.state.students.find(s => s.id === window.App._lockedStudentId);
+    if (student) {
+      picker.innerHTML = `
+        <div style="padding:12px;background:var(--primary-light);border-radius:8px;border:2px solid var(--primary);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;">
+              ${window.App.initials(student.name)}
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:600;color:var(--gray-800);">${window.App.escHtml(student.name)}</div>
+              <div style="font-size:0.75rem;color:var(--gray-500);">Alumno preseleccionado</div>
+            </div>
+          </div>
+        </div>`;
+      return;
+    }
+  }
 
   // Only show active students (active !== false)
   let students = window.App.state.students
@@ -299,15 +322,21 @@ function getPickerSelected() {
 
 window.App.saveClass = function(e) {
   e.preventDefault();
+  
+  // Use locked student if available, otherwise get from picker
+  const studentIds = window.App._lockedStudentId 
+    ? [window.App._lockedStudentId]
+    : getPickerSelected();
+  
+  // Clear locked student after use
+  window.App._lockedStudentId = null;
+  
   const id     = document.getElementById('class-id').value;
   const type   = document.getElementById('class-type').value;
   const date   = document.getElementById('class-date').value;
   const time   = document.getElementById('class-time').value;
   const fee    = parseFloat(document.getElementById('class-fee').value);
   const groupId = document.getElementById('class-group').value;
-  
-  // Always use students selected in the picker (allows deselecting group members)
-  const studentIds = getPickerSelected();
 
   if (!date || !time) { window.App.showToast('Fecha y hora obligatorias', 'error'); return; }
   if (isNaN(fee) || fee < 0) { window.App.showToast('Cuota inválida', 'error'); return; }
