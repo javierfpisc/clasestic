@@ -102,7 +102,7 @@ window.App.buildStudentCard = function(s) {
         </div>
       </div>
       <div class="student-card-actions">
-        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.App.createClassForStudent('${s.id}')" title="Crear clase individual">
+        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.App.createClassForStudent('${s.id}')" title="Crear clase individual" ${!isActive ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Crear clase
         </button>
