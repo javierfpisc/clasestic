@@ -8,6 +8,7 @@ window.App = window.App || {};
 window.App.renderDashboard = function() {
   // Stats - only count active students (active !== false)
   const totalStudents = window.App.state.students.filter(s => s.active !== false).length;
+  const inactiveStudents = window.App.state.students.filter(s => s.active === false).length;
   const totalGroups = (window.App.state.groups || []).length;
   const totalCourses = (window.App.state.courses || []).length;
   
@@ -41,7 +42,7 @@ window.App.renderDashboard = function() {
     <div class="stat-card stat-primary">
       <span class="stat-label">Alumnos</span>
       <span class="stat-value">${totalStudents}</span>
-      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">${totalGroups} grupos · ${totalCourses} cursos</small>
+      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">${totalGroups} grupos · ${totalCourses} cursos${inactiveStudents > 0 ? ` · ${inactiveStudents} inactivo${inactiveStudents !== 1 ? 's' : ''}` : ''}</small>
     </div>
     <div class="stat-card stat-warning">
       <span class="stat-label">Clases este mes</span>
