@@ -150,13 +150,28 @@ window.App.buildGroupStudentsPicker = function(selectedIds) {
   }
   
   picker.innerHTML = students.map(s => {
-    const checked = selectedIds.includes(s.id) ? 'checked' : '';
+    const isChecked = selectedIds.includes(s.id);
     return `
-      <label class="student-picker-item">
-        <input type="checkbox" value="${s.id}" ${checked} />
-        <span>${window.App.escHtml(s.name)}</span>
+      <label class="picker-student ${isChecked ? 'selected' : ''}" data-id="${s.id}">
+        <input type="checkbox" name="group_student" value="${s.id}" ${isChecked ? 'checked' : ''} />
+        <div class="picker-check">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="2 6 5 9 10 3"/>
+          </svg>
+        </div>
+        <span class="picker-name">${window.App.escHtml(s.name)}</span>
       </label>`;
   }).join('');
+  
+  // Add interaction
+  picker.querySelectorAll('.picker-student').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const input = el.querySelector('input');
+      el.classList.toggle('selected');
+      input.checked = el.classList.contains('selected');
+    });
+  });
 };
 
 window.App.getGroupPickerSelected = function() {

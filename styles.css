@@ -481,7 +481,15 @@ input::placeholder { color: var(--gray-400); }
 }
 .picker-check svg { width: 12px; height: 12px; stroke: white; display: none; }
 .picker-student.selected .picker-check svg { display: block; }
-.picker-name { font-size: 0.85rem; font-weight: 500; color: var(--gray-700); }
+.picker-name { 
+  font-size: 0.85rem; 
+  font-weight: 500; 
+  color: var(--gray-700);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* =============================================
    Calendar
