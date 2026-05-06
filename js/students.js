@@ -89,8 +89,8 @@ window.App.buildStudentCard = function(s) {
             ${s.course && studentGroups.length > 0 ? ' · ' : ''}
             ${studentGroups.length > 0 ? '<strong>Grupos:</strong> ' + window.App.escHtml(groupsText) : ''}
             ${(s.course || studentGroups.length > 0) && s.phone ? '<br>' : ''}
-            ${s.phone ? '📱 ' + window.App.escHtml(s.phone) : ''}
-          </div>
+            ${s.phone ? '📱 ' + window.App.escHtml(s.phone) : ''}          ${s.phone && s.createdAt ? '<br>' : ''}
+          ${s.createdAt ? '📅 Desde: ' + window.App.fmtDate(s.createdAt) : ''}          </div>
           ${pendingReceipts.length > 0 ? `
             <button class="receipt-pending-badge" onclick="window.openStudentReceipts('${s.id}')">
               📄 ${pendingReceipts.length} recibo${pendingReceipts.length !== 1 ? 's' : ''} pendiente${pendingReceipts.length !== 1 ? 's' : ''}
