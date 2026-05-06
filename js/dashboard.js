@@ -6,8 +6,8 @@
 window.App = window.App || {};
 
 window.App.renderDashboard = function() {
-  // Stats
-  const totalStudents = window.App.state.students.length;
+  // Stats - only count active students (active !== false)
+  const totalStudents = window.App.state.students.filter(s => s.active !== false).length;
   const totalGroups = (window.App.state.groups || []).length;
   const totalCourses = (window.App.state.courses || []).length;
   
