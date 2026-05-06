@@ -13,14 +13,14 @@ window.App.renderStudents = function() {
   ])].sort();
   const filterEl = document.getElementById('student-filter-course');
   const prevVal = filterEl.value;
-  filterEl.innerHTML = `<option value="">Todos los cursos</option>` +
+  filterEl.innerHTML = `<option value="">Curso</option>` +
     courseNames.map(c => `<option value="${window.App.escHtml(c)}" ${prevVal === c ? 'selected' : ''}>${window.App.escHtml(c)}</option>`).join('');
 
   // Populate group filter
   const groups = (window.App.state.groups || []).slice().sort((a, b) => a.name.localeCompare(b.name));
   const groupFilterEl = document.getElementById('student-filter-group');
   const prevGroupVal = groupFilterEl.value;
-  groupFilterEl.innerHTML = `<option value="">Todos los grupos</option>` +
+  groupFilterEl.innerHTML = `<option value="">Grupo</option>` +
     groups.map(g => `<option value="${g.id}" ${prevGroupVal === g.id ? 'selected' : ''}>${window.App.escHtml(g.name)}</option>`).join('');
 
   window.App.applyStudentFilters();
