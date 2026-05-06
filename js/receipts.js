@@ -156,7 +156,7 @@ window.App.openStudentReceipts = function(studentId) {
 
 function renderReceiptsModal(s) {
   document.getElementById('receipts-student-name').textContent = s.name;
-  const receipts  = (s.receipts || []).slice().reverse();
+  const receipts = (s.receipts || []).slice().sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
   const container = document.getElementById('receipts-list');
 
   if (receipts.length === 0) {
@@ -471,8 +471,8 @@ window.App.applyReceiptFilters = function() {
   
   list.innerHTML = studentsWithReceipts.map(item => {
     const s = item.student;
-    const receipts = item.receipts.sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
-    
+    const receipts = item.receipts.slice().sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
+
     return `
       <div class="card" style="margin-bottom:16px">
         <div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--gray-200)">
