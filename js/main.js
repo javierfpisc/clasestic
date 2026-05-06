@@ -45,6 +45,7 @@ function saveSettings() {
   
   // Update page title with academy name
   document.title = `${window.App.state.settings.academyName} - Gestión de Clases`;
+  document.getElementById('app-title').textContent = window.App.state.settings.academyName;
   
   window.App.saveState();
   window.App.closeModal('modal-settings');
@@ -127,6 +128,7 @@ async function init() {
   // Update page title with academy name
   const academyName = window.App.state.settings?.academyName || 'Academia TIC';
   document.title = `${academyName} - Gestión de Clases`;
+  document.getElementById('app-title').textContent = academyName;
   
   initEvents();
   window.App.initGCalTokenClient();
@@ -140,6 +142,7 @@ async function init() {
   // Update title again in case GitHub sync changed the academy name
   const finalAcademyName = window.App.state.settings?.academyName || 'Academia TIC';
   document.title = `${finalAcademyName} - Gestión de Clases`;
+  document.getElementById('app-title').textContent = finalAcademyName;
   
   // Now render with the latest data (either from GitHub or local)
   window.App.renderDashboard();
