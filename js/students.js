@@ -78,6 +78,10 @@ window.App.buildStudentCard = function(s) {
   
   return `
     <div class="student-card" style="${!isActive ? 'opacity:0.6;' : ''}">
+      <button class="btn btn-sm btn-primary" style="margin-right:12px;white-space:nowrap" onclick="event.stopPropagation(); window.App.createClassForStudent('${s.id}')" title="Crear clase individual para ${window.App.escHtml(s.name)}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Crear clase individual
+      </button>
       <div class="student-avatar">${window.App.initials(s.name)}</div>
       <div class="student-info">
         <div class="student-name">${window.App.escHtml(s.name)}</div>
@@ -237,6 +241,27 @@ window.App.initStudentEvents = function() {
   document.getElementById('student-filter-course').addEventListener('change', window.App.applyStudentFilters);
   document.getElementById('student-filter-group').addEventListener('change', window.App.applyStudentFilters);
   document.getElementById('student-filter-active').addEventListener('change', window.App.applyStudentFilters);
+}
+
+// Create a new individual class for a specific student
+window.App.createClassForStudent = function(studentId) {
+  const student = window.App.state.students.find(s => s.id === studentId);
+  if (!student) return;
+  
+  // Switch to classes tab
+  window.App.switchTab('classes');
+  
+  // Small delay to ensure tab is rendered
+  setTimeout(() => {
+    // Open new class modal
+    window.App.openNewClass();
+    
+    // Pre-select this student
+    const checkbox = document.querySelector(`input[name="class-students"][value="${studentId}"]`);
+    if (checkbox) {
+      checkbox.checked = true;
+    }
+  }, 100);
 }
 
 // Make functions globally available for onclick handlers
