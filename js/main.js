@@ -9,7 +9,6 @@ window.App = window.App || {};
 function openSettingsModal() {
   document.getElementById('settings-academy-name').value      = window.App.state.settings?.academyName    || '';
   document.getElementById('settings-default-individual-fee').value = window.App.state.settings?.defaultIndividualFee ?? 15;
-  document.getElementById('settings-default-group-fee').value = window.App.state.settings?.defaultGroupFee ?? 10;
   document.getElementById('settings-gcal-client-id').value    = window.App.state.settings?.gcalClientId   || '';
   document.getElementById('settings-gcal-calendar-id').value  = window.App.state.settings?.gcalCalendarId || 'primary';
   document.getElementById('settings-gh-token').value    = window.App.state.settings?.githubToken   || '';
@@ -25,7 +24,6 @@ function openSettingsModal() {
 function saveSettings() {
   const academyName    = document.getElementById('settings-academy-name').value.trim();
   const defaultIndividualFee = parseFloat(document.getElementById('settings-default-individual-fee').value) || 15;
-  const defaultGroupFee = parseFloat(document.getElementById('settings-default-group-fee').value) || 10;
   const gcalClientId   = document.getElementById('settings-gcal-client-id').value.trim();
   const gcalCalendarId = document.getElementById('settings-gcal-calendar-id').value.trim() || 'primary';
   const githubToken   = document.getElementById('settings-gh-token').value.trim();
@@ -37,7 +35,6 @@ function saveSettings() {
   window.App.state.settings = {
     academyName: academyName || 'Mi Academia',
     defaultIndividualFee,
-    defaultGroupFee,
     gcalClientId, gcalCalendarId,
     githubToken, githubGistUrl,
     whatsappPhoneId, whatsappToken, whatsappBusinessId,
@@ -124,6 +121,18 @@ function initEvents() {
 // Main initialization
 async function init() {
   window.App.loadState();
+
+  // Initialize flatpickr date picker (dd/mm/yyyy display, yyyy-mm-dd internal)
+  window.App._datePicker = flatpickr('#class-date', {
+    dateFormat: 'Y-m-d',
+    altInput: true,
+    altFormat: 'd/m/Y',
+    allowInput: true,
+    locale: { firstDayOfWeek: 1 },
+    onChange: function(_dates, _dateStr, instance) {
+      instance.input.dispatchEvent(new Event('change'));
+    }
+  });
   
   // Update page title with academy name
   const academyName = window.App.state.settings?.academyName || 'Academia TIC';

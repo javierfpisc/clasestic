@@ -95,20 +95,15 @@ window.App.openNewClass = function(prefillDate, lockedStudentId) {
   // Store locked student if provided
   window.App._lockedStudentId = lockedStudentId || null;
   
-  // Always use today or future date
   const today = window.App.todayStr();
-  let proposedDate = prefillDate || today;
-  
-  // If prefilled date is in the past, use today instead
-  if (prefillDate && prefillDate < today) {
-    proposedDate = today;
-  }
+  const proposedDate = prefillDate || today;
   
   const dateInput = document.getElementById('class-date');
   const timeInput = document.getElementById('class-time');
-  
-  dateInput.value = proposedDate;
-  dateInput.min = today;
+
+  if (window.App._datePicker) window.App._datePicker.setDate(proposedDate, false);
+  else dateInput.value = proposedDate;
+  dateInput.removeAttribute('min');
   
   // Set time
   const currentTime = window.App.currentTimeStr();
@@ -146,6 +141,52 @@ window.App.openNewClass = function(prefillDate, lockedStudentId) {
   window.App.openModal('modal-class');
 }
 
+window.App.openNewClassFromGroup = function(groupId) {
+  const g = window.App.state.groups.find(gr => gr.id === groupId);
+  if (!g) return;
+
+  userEditedFee = false;
+  window.App._lockedStudentId = null;
+
+  document.getElementById('modal-class-title').textContent = 'Nueva clase — ' + window.App.escHtml(g.name);
+  document.getElementById('class-id').value   = '';
+  document.getElementById('class-type').value = 'grupal';
+
+  const today = window.App.todayStr();
+  const dateInput = document.getElementById('class-date');
+  const timeInput = document.getElementById('class-time');
+
+  if (window.App._datePicker) window.App._datePicker.setDate(today, false);
+  else dateInput.value = today;
+  dateInput.removeAttribute('min');
+
+  const currentTime = window.App.currentTimeStr();
+  timeInput.value = currentTime;
+  timeInput.min = currentTime;
+
+  // Set fee from group tarifa
+  document.getElementById('class-fee').value = g.fee != null ? g.fee : 0;
+  userEditedFee = true; // lock fee to group tarifa (avoid auto-overwrite)
+
+  populateGroupSelect(groupId);
+  buildStudentsPicker(g.studentIds || []);
+  updateClassTypeUI('grupal');
+
+  dateInput.onchange = function() {
+    const selectedDate = this.value;
+    const today = window.App.todayStr();
+    if (selectedDate === today) {
+      const now = window.App.currentTimeStr();
+      timeInput.min = now;
+      if (timeInput.value < now) timeInput.value = now;
+    } else {
+      timeInput.removeAttribute('min');
+    }
+  };
+
+  window.App.openModal('modal-class');
+}
+
 window.App.openEditClass = function(classId) {
   const c = window.App.state.classes.find(c => c.id === classId);
   if (!c) return;
@@ -158,8 +199,9 @@ window.App.openEditClass = function(classId) {
   const timeInput = document.getElementById('class-time');
   const today = window.App.todayStr();
   
-  dateInput.value = c.date;
-  dateInput.min = today;
+  if (window.App._datePicker) window.App._datePicker.setDate(c.date, false);
+  else dateInput.value = c.date;
+  dateInput.removeAttribute('min');
   timeInput.value = c.time;
   
   // Set time min if editing today's class
@@ -278,7 +320,9 @@ function updateClassTypeUI(type) {
     groupSelector.style.display = 'block';
     // Only set default fee if user hasn't manually edited it
     if (!userEditedFee) {
-      const defaultFee = window.App.state.settings?.defaultGroupFee || 10;
+      const selectedGroupId = document.getElementById('class-group').value;
+      const grp = selectedGroupId ? window.App.state.groups.find(g => g.id === selectedGroupId) : null;
+      const defaultFee = grp?.fee != null ? grp.fee : 0;
       feeInput.value = defaultFee;
     }
   } else {
@@ -307,9 +351,11 @@ function onGroupChange(e) {
   const groupId = e.target.value;
   if (groupId) {
     const group = window.App.state.groups?.find(g => g.id === groupId);
-    if (group && group.studentIds) {
-      // Auto-select all students in the group
-      buildStudentsPicker(group.studentIds);
+    if (group) {
+      if (group.studentIds) buildStudentsPicker(group.studentIds);
+      if (!userEditedFee && group.fee != null) {
+        document.getElementById('class-fee').value = group.fee;
+      }
     }
   }
 }
@@ -342,14 +388,6 @@ window.App.saveClass = function(e) {
   if (isNaN(fee) || fee < 0) { window.App.showToast('Cuota inválida', 'error'); return; }
   if (studentIds.length === 0) { window.App.showToast('Selecciona al menos un alumno', 'error'); return; }
   if (type === 'individual' && studentIds.length > 1) { window.App.showToast('Clase individual: solo 1 alumno', 'error'); return; }
-
-  // Check if date/time is in the past
-  const classDateTime = new Date(`${date}T${time}`);
-  const now = new Date();
-  if (classDateTime < now) {
-    window.App.showToast('No se puede crear una clase en el pasado', 'error');
-    return;
-  }
 
   // Check for time conflict (same date+time, different id)
   const conflict = window.App.state.classes.find(c => c.date === date && c.time === time && c.id !== id);

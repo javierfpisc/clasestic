@@ -68,6 +68,21 @@ window.App.todayStr = function() {
   return `${year}-${month}-${day}`;
 };
 
+// Convert yyyy-mm-dd → dd/mm/yyyy (for display)
+window.App.toDisplayDate = function(isoDate) {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+};
+
+// Convert dd/mm/yyyy → yyyy-mm-dd (for storage)
+window.App.fromDisplayDate = function(displayDate) {
+  if (!displayDate) return '';
+  const [d, m, y] = displayDate.split('/');
+  if (!d || !m || !y) return '';
+  return `${y}-${m}-${d}`;
+};
+
 window.App.currentTimeStr = function() {
   const now = new Date();
   const hours = String(now.getHours()).padStart(2, '0');

@@ -8,8 +8,17 @@ window.App = window.App || {};
 window.App.generateReceipt = function(studentId) {
   const s = window.App.state.students.find(s => s.id === studentId);
   if (!s) return;
-  const balance = window.App.calculateStudentBalance(studentId);
-  if (balance <= 0) { window.App.showToast('Este alumno no tiene saldo pendiente de clases pasadas', 'error'); return; }
+
+  const today = window.App.todayStr();
+  const billedClassIds = new Set();
+  (s.receipts || []).forEach(r => (r.classIds || []).forEach(id => billedClassIds.add(id)));
+  const unbilledClasses = window.App.state.classes.filter(
+    c => c.date <= today && c.studentIds.includes(studentId) && !billedClassIds.has(c.id)
+  );
+  if (unbilledClasses.length === 0) {
+    window.App.showToast('Este alumno no tiene clases pendientes de facturar', 'error');
+    return;
+  }
 
   const hasPending = (s.receipts || []).some(r => r.status === 'pending');
   if (hasPending) {
@@ -154,6 +163,27 @@ window.App.openStudentReceipts = function(studentId) {
   window.App.openModal('modal-receipts');
 }
 
+// Build the class-lines HTML block for a receipt
+function buildReceiptClassLines(r) {
+  const classIds = r.classIds || [];
+  if (classIds.length === 0) return '';
+  const classes = classIds
+    .map(id => window.App.state.classes.find(c => c.id === id))
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const rows = classes.map(c => {
+    const groupName = c.groupId
+      ? (window.App.state.groups.find(g => g.id === c.groupId)?.name || 'Grupo')
+      : null;
+    const typeLabel = c.type === 'individual' ? 'Individual' : (groupName || 'Grupal');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--gray-100);font-size:0.78rem;color:var(--gray-700)">
+      <span>${window.App.fmtDate(c.date)}&nbsp;&nbsp;<span style="color:var(--gray-500)">${window.App.escHtml(typeLabel)}</span></span>
+      <span style="font-weight:600">${window.App.fmtCurrency(c.fee)}</span>
+    </div>`;
+  }).join('');
+  return `<div style="margin:8px 0 4px;background:var(--gray-50);border-radius:6px;padding:6px 10px">${rows}</div>`;
+}
+
 function renderReceiptsModal(s) {
   document.getElementById('receipts-student-name').textContent = s.name;
   const receipts = (s.receipts || []).slice().sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
@@ -184,6 +214,7 @@ function renderReceiptsModal(s) {
         </div>
         <div class="receipt-amount">${window.App.fmtCurrency(r.amount)}</div>
       </div>
+      ${buildReceiptClassLines(r)}
       <div class="receipt-item-actions">
         ${r.status === 'pending' ? `
           <button class="btn btn-sm btn-secondary" onclick="window.markReceiptAsSent('${s.id}','${r.id}')">Marcar enviado</button>
@@ -498,6 +529,7 @@ window.App.applyReceiptFilters = function() {
               </div>
               <div class="receipt-amount">${window.App.fmtCurrency(r.amount)}</div>
             </div>
+            ${buildReceiptClassLines(r)}
             <div class="receipt-item-actions">
               ${r.status === 'pending' ? `
                 <button class="btn btn-sm btn-secondary" onclick="window.markReceiptAsSent('${s.id}','${r.id}')">Marcar enviado</button>

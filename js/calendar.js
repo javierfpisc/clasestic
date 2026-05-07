@@ -60,11 +60,9 @@ window.App.renderCalendar = function() {
       `<div class="class-dot ${c.type}"></div>`
     ).join('');
 
-    // Allow clicking on today or future dates
-    const clickable = !isPast;
     const clickAction = hasClass 
       ? `onclick="window.openDayClasses('${dateStr}')"` 
-      : (clickable && !isOther ? `onclick="window.openNewClass('${dateStr}')"` : '');
+      : (!isOther ? `onclick="window.openNewClass('${dateStr}')"` : '');
 
     html += `
       <div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}${hasClass ? ' has-class' : ''}${isPast ? ' past' : ''}"
