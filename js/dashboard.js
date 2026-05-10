@@ -17,11 +17,17 @@ window.App.renderDashboard = function() {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // 1-12
   const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  const today = window.App.todayStr();
+  const nowDateTime = `${window.App.todayStr()}T${window.App.currentTimeStr()}`;
   
   const classesThisMonth = window.App.state.classes.filter(c => c.date.startsWith(monthPrefix));
-  const pastClassesThisMonth = classesThisMonth.filter(c => c.date < today).length;
-  const futureClassesThisMonth = classesThisMonth.filter(c => c.date >= today).length;
+  const pastClassesThisMonth = classesThisMonth.filter(c => {
+    const classDateTime = `${c.date}T${c.time}`;
+    return classDateTime < nowDateTime;
+  }).length;
+  const futureClassesThisMonth = classesThisMonth.filter(c => {
+    const classDateTime = `${c.date}T${c.time}`;
+    return classDateTime >= nowDateTime;
+  }).length;
   
   // Students with debt: ONLY those with unpaid receipts (sent/pending)
   const studentsWithDebt = window.App.state.students.filter(s => {
