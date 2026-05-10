@@ -44,6 +44,13 @@ window.App.renderDashboard = function() {
     return sum + unpaidAmount;
   }, 0);
 
+  // Calculate income from past classes this month (impartidas)
+  const pastClasses = classesThisMonth.filter(c => {
+    const classDateTime = `${c.date}T${c.time}`;
+    return classDateTime <= nowDateTime;
+  });
+  const monthIncome = pastClasses.reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
+
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-card stat-primary">
       <span class="stat-label">Alumnos</span>
@@ -58,11 +65,12 @@ window.App.renderDashboard = function() {
     <div class="stat-card stat-danger">
       <span class="stat-label">Con deuda</span>
       <span class="stat-value">${studentsWithDebt.length}</span>
-      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">Recibos generados pero no pagados</small>
+      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">${window.App.fmtCurrency(totalDebt)} · Recibos no pagados</small>
     </div>
     <div class="stat-card stat-success">
-      <span class="stat-label">Deuda total</span>
-      <span class="stat-value" style="font-size:1.1rem">${window.App.fmtCurrency(totalDebt)}</span>
+      <span class="stat-label">Ingresos mes</span>
+      <span class="stat-value" style="font-size:1.1rem">${window.App.fmtCurrency(monthIncome)}</span>
+      <small style="font-size:0.75rem;opacity:0.8;margin-top:4px">${pastClasses.length} clases impartidas</small>
     </div>
   `;
 
