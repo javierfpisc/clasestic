@@ -273,6 +273,15 @@
           <input type="time" id="class-time" required />
         </div>
         <div class="form-group">
+          <label for="class-duration">Duración *</label>
+          <select id="class-duration" required>
+            <option value="30">30 minutos</option>
+            <option value="60" selected>1 hora</option>
+            <option value="90">1 hora y media</option>
+            <option value="120">2 horas</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label for="class-fee">Cuota por alumno (€) *</label>
           <input type="number" id="class-fee" required step="0.01" min="0" placeholder="0.00" />
         </div>

@@ -104,7 +104,10 @@ window.App.upsertGCalEvent = async function(cls) {
   const calendarId = encodeURIComponent(window.App.state.settings?.gcalCalendarId || 'primary');
   const timeZone   = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const startDt    = new Date(`${cls.date}T${cls.time}:00`);
-  const endDt      = new Date(startDt.getTime() + 60 * 60 * 1000);
+  
+  // Use class duration (default to 60 minutes if not set)
+  const durationMinutes = cls.duration || 60;
+  const endDt      = new Date(startDt.getTime() + durationMinutes * 60 * 1000);
 
   const studentNames = cls.studentIds.map(id => {
     const s = window.App.state.students.find(s => s.id === id);

@@ -8,6 +8,39 @@ window.App = window.App || {};
 // Track if user manually edited the fee in the current modal
 let userEditedFee = false;
 
+// Get duration multiplier for fee calculation
+function getDurationMultiplier(duration) {
+  const durationNum = parseInt(duration);
+  switch(durationNum) {
+    case 30: return 0.5;
+    case 90: return 1.5;
+    case 120: return 2.0;
+    case 60:
+    default: return 1.0;
+  }
+}
+
+// Update fee based on duration
+function updateFeeForDuration() {
+  if (userEditedFee) return; // Don't auto-adjust if user manually changed fee
+  
+  const type = document.getElementById('class-type').value;
+  const duration = document.getElementById('class-duration').value;
+  const multiplier = getDurationMultiplier(duration);
+  
+  let baseFee;
+  if (type === 'grupal') {
+    const selectedGroupId = document.getElementById('class-group').value;
+    const grp = selectedGroupId ? window.App.state.groups.find(g => g.id === selectedGroupId) : null;
+    baseFee = grp?.fee != null ? grp.fee : (window.App.state.settings?.defaultGroupFee || 10);
+  } else {
+    baseFee = window.App.state.settings?.defaultIndividualFee || 15;
+  }
+  
+  const adjustedFee = baseFee * multiplier;
+  document.getElementById('class-fee').value = adjustedFee.toFixed(2);
+}
+
 window.App.renderClasses = function() {
   window.App.applyClassFilters();
 }
@@ -62,6 +95,17 @@ function buildClassCard(c) {
     displayName = `${c.studentIds.length} alumno${c.studentIds.length !== 1 ? 's' : ''}: ${studentNames.slice(0, 3).join(', ')}${studentNames.length > 3 ? '...' : ''}`;
   }
   
+  // Format duration display
+  const durationText = c.duration ? (() => {
+    switch(c.duration) {
+      case 30: return '30 min';
+      case 90: return '1h 30min';
+      case 120: return '2h';
+      case 60:
+      default: return '1h';
+    }
+  })() : '1h';
+  
   return `
     <div class="class-card" onclick="window.openClassDetail('${c.id}')">
       <div class="class-card-header">
@@ -71,7 +115,7 @@ function buildClassCard(c) {
             <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
             <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          ${window.App.fmtDate(c.date)} · <span style="font-weight:600">${window.App.dayOfWeek(c.date)}</span> · ${c.time}${gcalBadge}
+          ${window.App.fmtDate(c.date)} · <span style="font-weight:600">${window.App.dayOfWeek(c.date)}</span> · ${c.time} (${durationText})${gcalBadge}
         </span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
@@ -115,9 +159,15 @@ window.App.openNewClass = function(prefillDate, lockedStudentId) {
     timeInput.removeAttribute('min');
   }
   
+  // Set default duration (60 minutes = 1 hour)
+  document.getElementById('class-duration').value = '60';
+  
   // Set default fee
   const defaultFee = window.App.state.settings?.defaultIndividualFee || 15;
   document.getElementById('class-fee').value = defaultFee;
+  
+  // Add listener for duration changes
+  document.getElementById('class-duration').onchange = updateFeeForDuration;
   
   populateGroupSelect('');
   buildStudentsPicker(lockedStudentId ? [lockedStudentId] : []);
@@ -164,6 +214,9 @@ window.App.openNewClassFromGroup = function(groupId) {
   timeInput.value = currentTime;
   timeInput.min = currentTime;
 
+  // Set default duration (60 minutes = 1 hour)
+  document.getElementById('class-duration').value = '60';
+
   // Set fee from group tarifa
   document.getElementById('class-fee').value = g.fee != null ? g.fee : 0;
   userEditedFee = true; // lock fee to group tarifa (avoid auto-overwrite)
@@ -203,6 +256,8 @@ window.App.openEditClass = function(classId) {
   else dateInput.value = c.date;
   dateInput.removeAttribute('min');
   timeInput.value = c.time;
+  document.getElementById('class-duration').value = c.duration || 60; // Default to 60 if not set
+  document.getElementById('class-fee').value = c.fee;
   
   // Set time min if editing today's class
   if (c.date === today) {
@@ -212,7 +267,6 @@ window.App.openEditClass = function(classId) {
     timeInput.removeAttribute('min');
   }
   
-  document.getElementById('class-fee').value  = c.fee;
   populateGroupSelect(c.groupId || '');
   buildStudentsPicker(c.studentIds);
   updateClassTypeUI(c.type);
@@ -315,6 +369,8 @@ function updateClassTypeUI(type) {
   const groupSelector = document.getElementById('class-group-selector');
   const studentsSelector = document.getElementById('class-students-selector');
   const feeInput = document.getElementById('class-fee');
+  const duration = document.getElementById('class-duration').value;
+  const multiplier = getDurationMultiplier(duration);
   
   if (type === 'grupal') {
     groupSelector.style.display = 'block';
@@ -322,16 +378,16 @@ function updateClassTypeUI(type) {
     if (!userEditedFee) {
       const selectedGroupId = document.getElementById('class-group').value;
       const grp = selectedGroupId ? window.App.state.groups.find(g => g.id === selectedGroupId) : null;
-      const defaultFee = grp?.fee != null ? grp.fee : 0;
-      feeInput.value = defaultFee;
+      const baseFee = grp?.fee != null ? grp.fee : (window.App.state.settings?.defaultGroupFee || 10);
+      feeInput.value = (baseFee * multiplier).toFixed(2);
     }
   } else {
     groupSelector.style.display = 'none';
     document.getElementById('class-group').value = '';
     // Only set default fee if user hasn't manually edited it
     if (!userEditedFee) {
-      const defaultFee = window.App.state.settings?.defaultIndividualFee || 15;
-      feeInput.value = defaultFee;
+      const baseFee = window.App.state.settings?.defaultIndividualFee || 15;
+      feeInput.value = (baseFee * multiplier).toFixed(2);
     }
   }
   
@@ -381,6 +437,7 @@ window.App.saveClass = function(e) {
   const type   = document.getElementById('class-type').value;
   const date   = document.getElementById('class-date').value;
   const time   = document.getElementById('class-time').value;
+  const duration = parseInt(document.getElementById('class-duration').value) || 60;
   const fee    = parseFloat(document.getElementById('class-fee').value);
   const groupId = document.getElementById('class-group').value;
 
@@ -402,12 +459,12 @@ window.App.saveClass = function(e) {
     const existing = window.App.state.classes.find(c => c.id === id);
     if (existing) {
       // Update class (balance is calculated dynamically, no need to adjust)
-      Object.assign(existing, { type, date, time, fee, studentIds, groupId: groupId || null });
+      Object.assign(existing, { type, date, time, duration, fee, studentIds, groupId: groupId || null });
     }
   } else {
     // New class (balance is calculated dynamically, no need to adjust)
     const newId = window.App.uid();
-    window.App.state.classes.push({ id: newId, type, date, time, fee, studentIds, groupId: groupId || null });
+    window.App.state.classes.push({ id: newId, type, date, time, duration, fee, studentIds, groupId: groupId || null });
   }
 
   window.App.saveState();
@@ -441,10 +498,22 @@ window.App.openClassDetail = function(classId) {
     return `<span class="detail-student-chip">${s ? window.App.escHtml(s.name) : 'Alumno eliminado'}</span>`;
   }).join('');
 
+  // Format duration display
+  const durationText = c.duration ? (() => {
+    switch(c.duration) {
+      case 30: return '30 minutos';
+      case 90: return '1 hora y media';
+      case 120: return '2 horas';
+      case 60:
+      default: return '1 hora';
+    }
+  })() : '1 hora';
+
   document.getElementById('class-detail-content').innerHTML = `
     <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-value"><span class="class-type-badge ${c.type}">${c.type}</span></span></div>
     <div class="detail-row"><span class="detail-label">Fecha</span><span class="detail-value">${window.App.fmtDate(c.date)} · ${window.App.dayOfWeek(c.date)}</span></div>
     <div class="detail-row"><span class="detail-label">Hora</span><span class="detail-value">${c.time}</span></div>
+    <div class="detail-row"><span class="detail-label">Duración</span><span class="detail-value">${durationText}</span></div>
     <div class="detail-row"><span class="detail-label">Curso</span><span class="detail-value">${window.App.escHtml(c.course || '–')}</span></div>
     <div class="detail-row"><span class="detail-label">Cuota/alumno</span><span class="detail-value" style="font-weight:700;color:var(--primary)">${window.App.fmtCurrency(c.fee)}</span></div>
     ${c.type === 'grupal' ? `<div class="detail-row"><span class="detail-label">Total clase</span><span class="detail-value" style="font-weight:700;color:var(--gray-800)">${window.App.fmtCurrency(c.fee * c.studentIds.length)}</span></div>` : ''}
