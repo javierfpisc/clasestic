@@ -22,11 +22,11 @@ window.App.renderDashboard = function() {
   const classesThisMonth = window.App.state.classes.filter(c => c.date.startsWith(monthPrefix));
   const pastClassesThisMonth = classesThisMonth.filter(c => {
     const classDateTime = `${c.date}T${c.time}`;
-    return classDateTime < nowDateTime;
+    return classDateTime <= nowDateTime;
   }).length;
   const futureClassesThisMonth = classesThisMonth.filter(c => {
     const classDateTime = `${c.date}T${c.time}`;
-    return classDateTime >= nowDateTime;
+    return classDateTime > nowDateTime;
   }).length;
   
   // Students with debt: ONLY those with unpaid receipts (sent/pending)
