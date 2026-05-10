@@ -217,9 +217,13 @@ window.App.openNewClassFromGroup = function(groupId) {
   // Set default duration (60 minutes = 1 hour)
   document.getElementById('class-duration').value = '60';
 
-  // Set fee from group tarifa
-  document.getElementById('class-fee').value = g.fee != null ? g.fee : 0;
-  userEditedFee = true; // lock fee to group tarifa (avoid auto-overwrite)
+  // Set fee from group tarifa (adjusted by default duration multiplier)
+  const baseFee = g.fee != null ? g.fee : (window.App.state.settings?.defaultGroupFee || 10);
+  const multiplier = getDurationMultiplier(60); // 60 = default 1 hour
+  document.getElementById('class-fee').value = (baseFee * multiplier).toFixed(2);
+  
+  // Add listener for duration changes
+  document.getElementById('class-duration').onchange = updateFeeForDuration;
 
   populateGroupSelect(groupId);
   buildStudentsPicker(g.studentIds || []);
@@ -258,6 +262,13 @@ window.App.openEditClass = function(classId) {
   timeInput.value = c.time;
   document.getElementById('class-duration').value = c.duration || 60; // Default to 60 if not set
   document.getElementById('class-fee').value = c.fee;
+  
+  // Add listener for duration changes (even in edit mode, allow user to adjust fee by duration)
+  document.getElementById('class-duration').onchange = function() {
+    userEditedFee = false; // Allow fee to update when duration changes
+    updateFeeForDuration();
+    userEditedFee = true; // But lock it again after update
+  };
   
   // Set time min if editing today's class
   if (c.date === today) {
@@ -410,7 +421,9 @@ function onGroupChange(e) {
     if (group) {
       if (group.studentIds) buildStudentsPicker(group.studentIds);
       if (!userEditedFee && group.fee != null) {
-        document.getElementById('class-fee').value = group.fee;
+        const duration = document.getElementById('class-duration').value;
+        const multiplier = getDurationMultiplier(duration);
+        document.getElementById('class-fee').value = (group.fee * multiplier).toFixed(2);
       }
     }
   }
