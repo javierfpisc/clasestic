@@ -67,8 +67,6 @@ window.App.renderDashboard = function() {
   `;
 
   // Upcoming classes (future from current moment, sorted)
-  const nowDateTime = `${window.App.todayStr()}T${window.App.currentTimeStr()}`;
-  
   const upcoming = window.App.state.classes
     .filter(c => {
       const classDateTime = `${c.date}T${c.time}`;
