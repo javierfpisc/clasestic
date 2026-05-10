@@ -49,7 +49,11 @@ window.App.renderDashboard = function() {
     const classDateTime = `${c.date}T${c.time}`;
     return classDateTime <= nowDateTime;
   });
-  const monthIncome = pastClasses.reduce((sum, c) => sum + (parseFloat(c.fee) || 0), 0);
+  const monthIncome = pastClasses.reduce((sum, c) => {
+    const fee = parseFloat(c.fee) || 0;
+    const studentCount = (c.studentIds || []).length;
+    return sum + (fee * studentCount);
+  }, 0);
 
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-card stat-primary">
