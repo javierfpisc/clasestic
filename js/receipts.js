@@ -370,7 +370,7 @@ window.App.downloadReceiptPdf = function(studentId, receiptId) {
   y += 7;
   doc.setFontSize(7);
   doc.setTextColor(156, 163, 175);
-  doc.text('Este recibo acredita el pago de las clases indicadas.', margin, y);
+  doc.text('Importe pendiente de pago. Este recibo no es válido sin justificante de abono.', margin, y);
 
   // Signature area
   const sigY = pageH - 20;
