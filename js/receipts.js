@@ -424,6 +424,45 @@ window.App.cancelAllPendingReceipts = function() {
   );
 }
 
+// Download all receipt PDFs
+window.App.downloadAllReceiptPdfs = function() {
+  if (!window.jspdf?.jsPDF) {
+    window.App.showToast('La librería PDF no está disponible', 'error');
+    return;
+  }
+  
+  const allReceipts = [];
+  
+  window.App.state.students.forEach(s => {
+    (s.receipts || []).forEach(r => {
+      allReceipts.push({ student: s, receipt: r });
+    });
+  });
+  
+  if (allReceipts.length === 0) {
+    window.App.showToast('No hay recibos para descargar', 'info');
+    return;
+  }
+  
+  window.App.confirmAction(
+    'Descargar todos los PDFs',
+    `Se descargarán ${allReceipts.length} recibo(s) en PDF. ¿Continuar?`,
+    () => {
+      let downloaded = 0;
+      allReceipts.forEach((item, index) => {
+        // Add slight delay between downloads to avoid browser blocking
+        setTimeout(() => {
+          window.App.downloadReceiptPdf(item.student.id, item.receipt.id);
+          downloaded++;
+          if (downloaded === allReceipts.length) {
+            window.App.showToast(`${downloaded} PDF(s) descargado(s)`, 'success');
+          }
+        }, index * 300);
+      });
+    }
+  );
+}
+
 // Render receipts panel (all receipts grouped by student)
 window.App.renderReceipts = function() {
   // Populate month filter with available months from receipts (last 12 months only)
@@ -893,6 +932,11 @@ window.App.initReceiptEvents = function() {
   const btnCancelAll = document.getElementById('btn-cancel-all-receipts');
   if (btnCancelAll) {
     btnCancelAll.addEventListener('click', window.App.cancelAllPendingReceipts);
+  }
+  
+  const btnDownloadAll = document.getElementById('btn-download-all-receipts');
+  if (btnDownloadAll) {
+    btnDownloadAll.addEventListener('click', window.App.downloadAllReceiptPdfs);
   }
   
   const btnNewReceipt = document.getElementById('btn-new-receipt');
