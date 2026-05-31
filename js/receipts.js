@@ -392,6 +392,38 @@ window.App.downloadReceiptPdf = function(studentId, receiptId) {
   window.App.showToast(`Recibo ${r.number} descargado`, 'success');
 }
 
+// Cancel all pending receipts
+window.App.cancelAllPendingReceipts = function() {
+  const pendingReceipts = [];
+  
+  window.App.state.students.forEach(s => {
+    (s.receipts || []).forEach(r => {
+      if (r.status === 'pending') {
+        pendingReceipts.push({ student: s, receipt: r });
+      }
+    });
+  });
+  
+  if (pendingReceipts.length === 0) {
+    window.App.showToast('No hay recibos pendientes para cancelar', 'info');
+    return;
+  }
+  
+  window.App.confirmAction(
+    'Cancelar todos los recibos pendientes',
+    `Se cancelarán ${pendingReceipts.length} recibo(s) pendiente(s). Esta acción no se puede deshacer. ¿Continuar?`,
+    () => {
+      pendingReceipts.forEach(item => {
+        item.student.receipts = item.student.receipts.filter(r => r.id !== item.receipt.id);
+      });
+      
+      window.App.saveState();
+      window.App.renderCurrentTab();
+      window.App.showToast(`${pendingReceipts.length} recibo(s) cancelado(s)`, 'success');
+    }
+  );
+}
+
 // Render receipts panel (all receipts grouped by student)
 window.App.renderReceipts = function() {
   // Populate month filter with available months from receipts (last 12 months only)
@@ -856,6 +888,11 @@ window.App.initReceiptEvents = function() {
   const btnSend = document.getElementById('btn-send-pending-receipts');
   if (btnSend) {
     btnSend.addEventListener('click', window.App.sendPendingReceipts);
+  }
+  
+  const btnCancelAll = document.getElementById('btn-cancel-all-receipts');
+  if (btnCancelAll) {
+    btnCancelAll.addEventListener('click', window.App.cancelAllPendingReceipts);
   }
   
   const btnNewReceipt = document.getElementById('btn-new-receipt');
