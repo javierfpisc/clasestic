@@ -383,18 +383,9 @@ window.App.downloadReceiptPdf = function(studentId, receiptId) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(31, 41, 55);
-  const paymentText = 'El pago se hará a través de la app del banco, mediante halcash (envío a cajero, envío efectivo móvil, envío con código, etc.). En el concepto/descripción indica tu nombre y apellidos, el teléfono al que enviar el código es el 659951873. Por último recuerda enviar el código/PIN de retirada del pago por Whatsapp al mismo número.';
+  const paymentText = 'El pago se hará a través de la app del banco, mediante halcash (envío a cajero, envío efectivo móvil, envío con código, etc.). En el concepto/descripción indica tu nombre y apellidos, el teléfono al que enviar el código es el 659951873. Por último recuerda enviar por Whatsapp al número anterior el código/PIN de retirada del pago y el número de teléfono desde el que se hizo el pago.';
   const lines = doc.splitTextToSize(paymentText, contentW);
   doc.text(lines, margin, y);
-
-  // Signature area
-  const sigY = pageH - 20;
-  doc.setDrawColor(209, 213, 219);
-  doc.setLineWidth(0.3);
-  doc.line(margin, sigY, margin + 48, sigY);
-  doc.setFontSize(7);
-  doc.setTextColor(156, 163, 175);
-  doc.text('Firma / Sello', margin, sigY + 5);
 
   doc.save(`recibo_${r.number}_${s.name.replace(/\s+/g, '_')}.pdf`);
 
