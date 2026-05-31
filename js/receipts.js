@@ -371,6 +371,21 @@ window.App.downloadReceiptPdf = function(studentId, receiptId) {
   doc.setFontSize(7);
   doc.setTextColor(156, 163, 175);
   doc.text('Importe pendiente de pago. Este recibo no es válido sin justificante de abono.', margin, y);
+  
+  // Payment instructions
+  y += 8;
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(107, 114, 128);
+  doc.text('INSTRUCCIONES DE PAGO', margin, y);
+  
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(31, 41, 55);
+  const paymentText = 'El pago se hará a través de la app del banco, mediante halcash (envío a cajero, envío efectivo móvil, envío con código, etc.). En el concepto/descripción indica tu nombre y apellidos, el teléfono al que enviar el código es el 659951873. Por último recuerda enviar el código/PIN de retirada del pago por Whatsapp al mismo número.';
+  const lines = doc.splitTextToSize(paymentText, contentW);
+  doc.text(lines, margin, y);
 
   // Signature area
   const sigY = pageH - 20;
