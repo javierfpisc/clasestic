@@ -157,6 +157,7 @@
         </div>
       </div>
       <div id="receipts-filters" style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" id="receipt-filter-student" class="filter-input" placeholder="Filtrar por alumno..." />
         <select id="receipt-filter-month" class="filter-select">
           <option value="">Todos los meses</option>
         </select>
@@ -168,6 +169,41 @@
         </select>
       </div>
       <div id="receipts-panel-list"></div>
+    </section>
+
+    <!-- REPORTS tab -->
+    <section id="tab-reports" class="tab-content">
+      <div class="section-header">
+        <h2>Informes</h2>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <div id="reports-filters" class="reports-filters">
+          <div class="reports-filter-item">
+            <label for="reports-date-from">Desde</label>
+            <input type="date" id="reports-date-from" />
+          </div>
+          <div class="reports-filter-item">
+            <label for="reports-date-to">Hasta</label>
+            <input type="date" id="reports-date-to" />
+          </div>
+          <button id="btn-reports-apply" class="btn btn-secondary btn-sm">Aplicar</button>
+        </div>
+        <div class="reports-summary-grid">
+          <div>
+            <div class="reports-summary-label">Total facturado</div>
+            <div id="reports-total-billed" class="reports-summary-value billed">0,00 €</div>
+          </div>
+          <div>
+            <div class="reports-summary-label">Total cobrado</div>
+            <div id="reports-total-paid" class="reports-summary-value paid">0,00 €</div>
+          </div>
+        </div>
+        <div class="reports-export-actions">
+          <button id="btn-reports-export-csv" class="btn btn-sm btn-secondary">Exportar CSV</button>
+          <button id="btn-reports-export-pdf" class="btn btn-sm btn-primary">Exportar PDF</button>
+        </div>
+      </div>
+      <div id="reports-monthly-list"></div>
     </section>
 
     <!-- COURSES tab -->
@@ -206,6 +242,10 @@
     <button class="nav-btn" data-tab="receipts">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       <span>Recibos</span>
+    </button>
+    <button class="nav-btn" data-tab="reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/></svg>
+      <span>Informes</span>
     </button>
     <button class="nav-btn" data-tab="courses">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
@@ -534,6 +574,7 @@
   <script src="js/calendar.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/receipts.js"></script>
+  <script src="js/reports.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

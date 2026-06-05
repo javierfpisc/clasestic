@@ -518,6 +518,7 @@ window.App.renderReceipts = function() {
 window.App.applyReceiptFilters = function() {
   const statusFilter = document.getElementById('receipt-filter-status')?.value || '';
   const monthFilter = document.getElementById('receipt-filter-month')?.value || '';
+  const studentQuery = (document.getElementById('receipt-filter-student')?.value || '').trim().toLowerCase();
   const today = window.App.todayStr();
   
   // Get all students with receipts OR unbilled classes
@@ -557,6 +558,11 @@ window.App.applyReceiptFilters = function() {
       
       return { student: s, receipts, hasUnbilledClasses: monthFilter ? false : hasUnbilledClasses };
     })
+    .filter(item => {
+      if (!studentQuery) return true;
+      return (item.student.name || '').toLowerCase().includes(studentQuery);
+    })
+    .sort((a, b) => (a.student.name || '').localeCompare((b.student.name || ''), 'es', { sensitivity: 'base' }))
     .filter(item => item.receipts.length > 0 || item.hasUnbilledClasses);
   
   const list = document.getElementById('receipts-panel-list');
@@ -922,6 +928,11 @@ window.App.initReceiptEvents = function() {
   const filterMonth = document.getElementById('receipt-filter-month');
   if (filterMonth) {
     filterMonth.addEventListener('change', window.App.applyReceiptFilters);
+  }
+
+  const filterStudent = document.getElementById('receipt-filter-student');
+  if (filterStudent) {
+    filterStudent.addEventListener('input', window.App.applyReceiptFilters);
   }
   
   const btnSend = document.getElementById('btn-send-pending-receipts');

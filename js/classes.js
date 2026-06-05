@@ -543,7 +543,13 @@ window.App.deleteClass = function(classId) {
     `¿Eliminar esta clase?`,
     async () => {
       // Remove from Google Calendar if synced
-      if (c.gcalEventId) await window.App.deleteGCalEvent(c);
+      if (c.gcalEventId) {
+        const deletedInGCal = await window.App.deleteGCalEvent(c);
+        if (!deletedInGCal) {
+          window.App.showToast('No se pudo eliminar en Google Calendar. Reintenta tras conectar.', 'error');
+          return;
+        }
+      }
       // Delete class (balance is calculated dynamically, no need to adjust)
       window.App.state.classes = window.App.state.classes.filter(cl => cl.id !== classId);
       window.App.saveState();

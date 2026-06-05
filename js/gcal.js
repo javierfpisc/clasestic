@@ -168,12 +168,26 @@ window.App.upsertGCalEvent = async function(cls) {
 };
 
 window.App.deleteGCalEvent = async function(cls) {
-  if (!cls.gcalEventId || !window.App.isGCalConnected()) return;
+  if (!cls.gcalEventId) return true;
+  if (!window.App.isGCalConnected()) return false;
   const calendarId = encodeURIComponent(window.App.state.settings?.gcalCalendarId || 'primary');
   try {
-    await fetch(
+    const res = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(cls.gcalEventId)}`,
       { method: 'DELETE', headers: { 'Authorization': `Bearer ${window.App.gcalAccessToken}` } }
     );
-  } catch { /* ignore */ }
+
+    if (res.status === 401) {
+      window.App.setGcalAccessToken(null);
+      gcalAccessExpiry = 0;
+      window.App.updateGCalUI();
+      window.App.showToast('Sesion de Google expirada, reconecta', 'error');
+      return false;
+    }
+
+    // 204 = deleted, 404 = already absent in Google Calendar
+    return res.status === 204 || res.status === 404;
+  } catch {
+    return false;
+  }
 };
