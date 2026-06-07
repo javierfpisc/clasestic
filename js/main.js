@@ -113,6 +113,7 @@ function initEvents() {
   window.App.initClassEvents();
   window.App.initGroupEvents();
   window.App.initReceiptEvents();
+  window.App.initReportsEvents();
   window.App.initCourseEvents();
   window.App.initCalendarEvents();
   window.App.initDashboardEvents();
